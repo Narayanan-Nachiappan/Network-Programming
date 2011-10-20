@@ -59,7 +59,7 @@ sendagain:
 #endif
 	sendhdr.ts = rtt_ts(&rttinfo);
 	Sendmsg(fd, &msgsend, 0);
-	
+
 	alarm(rtt_start(&rttinfo));	/* calc timeout value & start timer */
 #ifdef	RTT_DEBUG
 	rtt_debug(&rttinfo);
@@ -78,12 +78,18 @@ sendagain:
 		goto sendagain;
 	}
 
-	
+	do {
+		n = Recvmsg(fd, &msgrecv, 0);
+#ifdef	RTT_DEBUG
+		fprintf(stderr, "recv %4d\n", recvhdr.seq);
+#endif
+	} while (n < sizeof(struct hdr) || recvhdr.seq != sendhdr.seq);
+
 	alarm(0);			/* stop SIGALRM timer */
 		/* 4calculate & store new RTT estimator values */
 	rtt_stop(&rttinfo, rtt_ts(&rttinfo) - recvhdr.ts);
 
-	return(1);	/* return size of received datagram */
+	return(n - sizeof(struct hdr));	/* return size of received datagram */
 }
 
 static void

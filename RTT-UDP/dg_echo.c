@@ -7,12 +7,10 @@ dg_echo(int sockfd, SA *pcliaddr, socklen_t clilen)
 	socklen_t	len;
 	char		mesg[MAXLINE];
 
-	
-
 	for ( ; ; ) {
 		len = clilen;
-		Recvfrom(sockfd, mesg, MAXLINE, 0, pcliaddr, &len);
-		printf("%s",mesg);
-	
+		n = Recvfrom(sockfd, mesg, MAXLINE, 0, pcliaddr, &len);
+
+		Sendto(sockfd, mesg, n, 0, pcliaddr, clilen);
 	}
 }
