@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
-int *mask(char*, char*, char*);
+int isLocalNetwork(char*, char*, char*);
+void send_cli(FILE*, int, const SA*, socklen_t);
 
 int main(int argc, char **argv){
 	err_msg("CSE 533 : Network Programming");
@@ -19,10 +20,10 @@ int main(int argc, char **argv){
 	
 	FILE *clientin;
 	clientin=fopen ("client.in","r");
-	char serv_ip_addr[20];
-	char cli_ip_addr[20];
-	char local_cli_ip_addr[20];
-	char port[20];
+	char serv_ip_addr[INET_ADDRSTRLEN];
+	char cli_ip_addr[INET_ADDRSTRLEN];
+	char local_cli_ip_addr[INET_ADDRSTRLEN];
+	char port[5];
 	char file_name[20];
 	char window_size[20];
 	char seed[20];
@@ -58,11 +59,9 @@ int main(int argc, char **argv){
 	int isLocal = 0, isSameHost = 0;
 	char bc_addr[20];
 
-
 	err_msg("Examine Client's IP Address: 127.0.0.1");
 	
 	for (ifihead = ifi = Get_ifi_info_plus(AF_INET, atoi("127.0.0.1")); ifi != NULL; ifi = ifi->ifi_next) {
-		err_msg("|1|Server address: %s", serv_ip_addr);
 		
 		printf("%s: ", ifi->ifi_name);
 		if (ifi->ifi_index != 0)
@@ -80,25 +79,18 @@ int main(int argc, char **argv){
 				// if the server is the same host as the client, this will be set as the lookback address later
 				strcpy(cli_ip_addr, Sock_ntop_host(sa, sizeof(*sa)));
 				
-				err_msg("|2|Server address: %s", serv_ip_addr);
-				
 				if(!isLocal){
 					char network_mask[20];
 					strcpy(network_mask, Sock_ntop_host(ifi->ifi_ntmaddr, sizeof(*sa)));
-					
-					//printf("Network address for client: %s", mask(cli_ip_addr, network_mask));
-					err_msg("|2.5|Server address: %s", serv_ip_addr);
-					if (mask(cli_ip_addr, serv_ip_addr, network_mask) == 0){
-						err_msg("|2.6|Server address: %s", serv_ip_addr);
+					if(isLocalNetwork(cli_ip_addr, serv_ip_addr, network_mask) == 0){
 						strcpy(local_cli_ip_addr, Sock_ntop_host(sa, sizeof(*sa)));
 						isLocal = 1;
 					}
 				}
-				
-				err_msg("|3|Server address: %s", serv_ip_addr);
-
 				if(!isSameHost){
-					if(strcmp(Sock_ntop_host(sa, sizeof(*sa)), serv_ip_addr) == 0) isSameHost = 1;
+					if(strcmp(Sock_ntop_host(sa, sizeof(*sa)), serv_ip_addr) == 0
+						|| strcmp(serv_ip_addr, "127.0.0.1") == 0
+						) isSameHost = 1;
 				}
 			}
 		}
@@ -147,44 +139,92 @@ int main(int argc, char **argv){
 		err_msg(" change the server address to loopback address, so as client address.");
 		strcpy(serv_ip_addr, "127.0.0.1");
 		strcpy(cli_ip_addr, "127.0.0.1");
-	}
-	
-	
-	if(isLocal){
+	} else if(isLocal){
 		err_msg("Server is local");
 		strcpy(cli_ip_addr, local_cli_ip_addr);
 	}
 	
 	err_msg("Client address: %s", cli_ip_addr);
 	err_msg("Server address: %s", serv_ip_addr);
-
+	serv_ip_addr[15] = '\0';
 	int					sockfd;
 	struct sockaddr_in	servaddr;
 
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = htons(SERV_PORT);
-	Inet_pton(AF_INET, argv[1], &servaddr.sin_addr);
+	servaddr.sin_port = htons(0);
+	Inet_pton(AF_INET, serv_ip_addr, &servaddr.sin_addr);
 
 	sockfd = Socket(AF_INET, SOCK_DGRAM, 0);
 
-	dg_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));
+	// added
+	err_msg("----------------------------------------");
+	err_msg("Bind a socket");
+	Bind(sockfd, (SA *) &servaddr, sizeof(servaddr));
+	
+	struct sockaddr_in ss_cli, ss_serv;
+	char str[INET_ADDRSTRLEN];
+
+	socklen_t len;
+	len = sizeof(ss_cli);
+	if (getsockname(sockfd, &ss_cli, &len) < 0){
+		err_quit("getsockname error");
+	}
+	err_msg("IP Client");
+	err_msg("IP Address : %s", Inet_ntop(AF_INET, &ss_cli.sin_addr, str, sizeof(str)));
+	err_msg("Ephemeral port number assigned : %d", ss_cli.sin_port);
+
+	err_msg("----------------------------------------");
+	err_msg("Connect a socket");
+	port[4] = '\0';
+	
+	servaddr.sin_port = htons(atoi(port));
+
+	Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
+
+	len = sizeof(ss_serv);
+	if (getpeername(sockfd, &ss_serv, &len) < 0){
+		err_quit("getpeername error");
+	}
+	err_msg("IP Server");
+	err_msg("IP Address : %s", Inet_ntop(AF_INET, &ss_serv.sin_addr, str, sizeof(str)));
+	err_msg("Well-known port number : %d", ss_serv.sin_port);
+		
+	////////
+	send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));
 
 	exit(0);
 }
 
-int *mask(char *ip_addr, char *serv_addr, char *mask_addr){
-	
+void send_cli(FILE *fp, int sockfd, const SA *pservaddr, socklen_t servlen){
+	int	n;
+	char	sendline[MAXLINE], recvline[MAXLINE + 1];
+
+	while (Fgets(sendline, MAXLINE, fp) != NULL) {
+		// changed Sendto to Writen
+		Writen(sockfd, sendline, strlen(sendline));
+
+		n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
+
+		recvline[n] = 0;	/* null terminate */
+		Fputs(recvline, stdout);
+	}
+}
+
+// Check if the two addr is in the local network
+int isLocalNetwork(char *cli_addr, char *serv_addr, char *mask_addr){
 	char addr1[4], addr2[4], addr3[4], addr4[4];
 	char addr5[4], addr6[4], addr7[4], addr8[4];
 	char addr9[4], addr10[4], addr11[4], addr12[4];
 	char *network_addr_cli = (char *) calloc(16, sizeof(char)); 
 	char *network_addr_serv = (char *) calloc(16, sizeof(char)); 
-	char serv_ip_addr[20];
+	char cli_ip_addr[INET_ADDRSTRLEN];
+	char serv_ip_addr[INET_ADDRSTRLEN];
 
+	strcpy(cli_ip_addr, serv_addr);
 	strcpy(serv_ip_addr, serv_addr);
 
-	strcpy(addr1, strtok(ip_addr, "."));
+	strcpy(addr1, strtok(cli_ip_addr, "."));
 	strcpy(addr2, strtok(NULL, "."));
 	strcpy(addr3, strtok(NULL, "."));
 	strcpy(addr4, strtok(NULL, "."));
@@ -199,14 +239,8 @@ int *mask(char *ip_addr, char *serv_addr, char *mask_addr){
 	strcpy(addr11, strtok(NULL, "."));
 	strcpy(addr12, strtok(NULL, "."));
 
-	//printf("\n");
-	//printf("ip = %d.%d.%d.%d\n", atoi(addr1), atoi(addr2), atoi(addr3), atoi(addr4));
-	//printf("network mask = %d.%d.%d.%d\n", atoi(addr5), atoi(addr6), atoi(addr7), atoi(addr8));
-	
 	snprintf(network_addr_cli, sizeof(network_addr_cli), "%d.%d.%d.%d", atoi(addr1) & atoi(addr5), atoi(addr2) & atoi(addr6), atoi(addr3) & atoi(addr7), atoi(addr4) & atoi(addr8));
 	snprintf(network_addr_serv, sizeof(network_addr_serv), "%d.%d.%d.%d", atoi(addr9) & atoi(addr5), atoi(addr10) & atoi(addr6), atoi(addr11) & atoi(addr7), atoi(addr12) & atoi(addr8));
-//	printf("network address_cli = %d.%d.%d.%d\n", atoi(addr1) & atoi(addr5), atoi(addr2) & atoi(addr6), atoi(addr3) & atoi(addr7), atoi(addr4) & atoi(addr8));
-//	printf("network address_serv = %d.%d.%d.%d\n", atoi(addr9) & atoi(addr5), atoi(addr10) & atoi(addr6), atoi(addr11) & atoi(addr7), atoi(addr12) & atoi(addr8));
 
 	return strcmp(network_addr_cli, network_addr_serv);
 }
