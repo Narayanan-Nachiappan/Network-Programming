@@ -1,6 +1,7 @@
 #include "a2h.h"
 #include "unpifiplus.h"
 
+void sig_chld(int signo);
 void mydg_echo(int sockfd, struct sockaddr *pcliaddr, socklen_t clilen, struct sockaddr * myaddr);
 void print_ifi(struct ifi_info	*ifi);
 
@@ -16,17 +17,17 @@ struct sock_info
 int main(int argc, char **argv)
 {
 	FILE 				*fp;
-	int					i, j, k, match = 0, currentmax = 0, max_window_size = 0, lastsock = 0, maxfdp1 = 0, servport;
+	int					i, j, k, match = 0, currentmax = 0, max_window_size = 0, numsocks = 0, maxfdp1 = 0, servport;
 	int					socklist[MAXSOCKS];
 	struct sock_info	infolist[MAXSOCKS];
 	const int			on = 1;
 	pid_t				pid;
 	struct ifi_info		*ifi, *ifihead;
 	socklen_t 			clilen;
-	struct sockaddr_in	*sa;
-	struct sockaddr 	*rcv, *cliaddr;
+	struct sockaddr_in	*sa, cliaddr;
+	struct sockaddr 	*rcv;
 	fd_set 				rset;
-	char				mesg[MAXLINE], temp_subnet[14];
+	char				mesg[MAXLINE], temp_subnet[14], address[16];
 
 	//Read information from server.in file
 	fp = fopen("server.in", "r");
@@ -76,81 +77,85 @@ int main(int argc, char **argv)
 		sa = (struct sockaddr_in *) infolist[i].subnet_addr;
 		printf("  Subnet addr: %s\n\n", Sock_ntop_host(sa, sizeof(*sa)));
 		
-		lastsock = i;
+		numsocks = i + 1;
 		//printf("bound %s\n", sock_ntop((struct sockaddr *) sa, sizeof(*sa)));
 		//print_ifi(ifi);
 	}
+	
+	printf("Found %d interfaces\n", numsocks);
+	
+	signal(SIGCHLD, sig_chld);
 	
 	FD_ZERO(&rset);
 	clilen = sizeof(cliaddr);
 		
 	//Set up infinite loop for handling incoming connections
+	//printf("Infinite loop\n");
 	for ( ; ; ) 
 	{
 		//Set up file descriptors for select()
-		for(i = 0; i < lastsock; i++)
+		for(i = 0; i < numsocks; i++)
 		{
 			FD_SET(socklist[i], &rset);
 		}
-		
-		for(i = 0; i < lastsock; i++)
+		//printf("FD_SET\n");
+		currentmax = 0;
+		for(i = 0; i < numsocks; i++)
 		{
 				currentmax = max(currentmax, socklist[i]);
+				//printf("currentmax = %d\n", currentmax);
 		}
 		
 		maxfdp1 = currentmax + 1;
+		
+		printf("Select\n");
 		select(maxfdp1, &rset, NULL, NULL, NULL);
 		
+		//printf("Selected\n");
 		//Handle a connection request on the first socket
-		for(i = 0; i < lastsock; i++)
+		for(i = 0; i < numsocks; i++)
 		{
 			if(FD_ISSET(socklist[i], &rset))
 			{
-				if ( (pid = Fork()) == 0) 
+				//printf("Socket %d ready\n", i);
+				if ((pid = Fork()) == 0) 
 				{	
 					for(j = 0; j < i; j++)
 					{
 						close(socklist[j]);
 					}
 					
-					for(j = i + 1; j < lastsock; j++)
+					for(j = i + 1; j < numsocks; j++)
 					{
 						close(socklist[j]);
 					}
 					
-					j = recvfrom(socklist[i], mesg, MAXLINE, 0, cliaddr, &clilen);
-					rcv = (struct sockaddr *) cliaddr;
-					if(strcmp(Sock_ntop_host(rcv, sizeof(*rcv)), "127.0.0.1") == 0)
+					j = recvfrom(socklist[i], mesg, MAXLINE, 0, (struct sockaddr *)&cliaddr, &clilen);
+					if(j == -1)
+					{
+						printf("recvfrom error %d\n, exiting", errno); //recvfrom error
+						exit(1);
+					}
+					//rcv = (struct sockaddr *) cliaddr;
+					inet_ntop(AF_INET, &cliaddr.sin_addr, address, clilen);
+					printf("Received from %s\n", address);
+					
+					if(strcmp(address, "127.0.0.1") == 0)
 					{
 						printf("Client address is the loopback address\n");
 					}
 					else
-					{
-						for(j = 0; j < lastsock; j++)
-						{
-							for(k = 0; k < 14; k++)
-							{
-								temp_subnet[k] = rcv->sa_data[k] & infolist[j].netmask_addr->sa_data[k];
-							}
-							
-							match = 1;
-							for(k = 0; k< 14; k++)
-							{
-								if(temp_subnet[k] != infolist[j].subnet_addr->sa_data[k])
-									match = 0;
-								break;
-							}
-							
-							if(match == 1)
-							{
-								printf("Client: %s\n Server: %s\n Subnet: %s\n", Sock_ntop_host(rcv, sizeof(*rcv)), infolist[j].bound_addr, temp_subnet);
-								break;
-							}
-						}				
-					}
-					
-					//mydg_echo(socklist[i], (struct sockaddr *) &cliaddr, sizeof(cliaddr), (struct sockaddr *) sa);
-					exit(0);		// never executed
+					{						
+						if(isLocal((struct sockaddr*)&cliaddr, infolist[i].bound_addr, infolist[i].netmask_addr) == 0)
+							printf("Client is LOCAL - ");
+						else
+							printf("Client is NOT LOCAL - ");
+						sa = &cliaddr;
+						printf("Client: %s, ", Sock_ntop_host(sa, sizeof(*sa)));
+						sa = (struct sockaddr_in *) infolist[i].bound_addr;
+						printf("Server: %s\n", Sock_ntop_host(sa, sizeof(*sa)));
+					}			
+					exit(0);
 				}
 			}
 		}		
@@ -162,6 +167,17 @@ int main(int argc, char **argv)
 		mydg_echo(sockfd, (SA *) &cliaddr, sizeof(cliaddr), (SA *) sa);
 		exit(0);		// never executed
 	}*/
+}
+
+//SIGCHLD Handler p138
+void sig_chld(int signo)
+{
+	pid_t pid;
+	int stat;
+	
+	while((pid = waitpid(-1, &stat, WNOHANG)) > 0) //Wait for the correct child to terminate
+		printf("SIGCHLD - child %d terminated\n\n", pid);
+	return;
 }
 
 //Used for testing, will be removed before submission 
