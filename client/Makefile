@@ -1,14 +1,27 @@
-include ../Make.defines
 
-PROGS =	a2_cli a2_srv
+CC = gcc
 
-all:	${PROGS}
+LIBS =  -lsocket\
+	/home/courses/cse533/Stevens/unpv13e_solaris2.10/libunp.a
 
-a2_cli:	a2_cli.o
-		${CC} ${CFLAGS} -o $@ a2_cli.o ${LIBS}
+FLAGS =  -g -O2
+CFLAGS = ${FLAGS} -I/home/courses/cse533/Stevens/unpv13e_solaris2.10/lib
 
-a2_srv: a2_srv.o
-		${CC} ${CFLAGS} -o $@ a2_srv.o ${LIBS}
+all: server client
+
+mask.o: mask.c
+	${CC} ${CFLAGS} -c mask.c
+client: client.o
+	${CC} ${FLAGS} -o client client.o get_ifi_info_plus.o ${LIBS}
+udpcli01.o: udpcli01.c
+	${CC} ${CFLAGS} -c udpcli01.c
+	
+get_ifi_info_plus.o: get_ifi_info_plus.c
+	${CC} ${CFLAGS} -c get_ifi_info_plus.c
+
+server: server.o get_ifi_info_plus.o mask.o
+	${CC} ${FLAGS} -o server server.o get_ifi_info_plus.o mask.o ${LIBS}
 
 clean:
-		rm -f ${PROGS} ${CLEANFILES}
+	rm server get_ifi_info_plus.o mask.o client
+
