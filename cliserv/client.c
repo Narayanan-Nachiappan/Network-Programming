@@ -178,7 +178,7 @@ int main(int argc, char **argv){
 
 	err_msg("----------------------------------------");
 	err_msg("Connect a socket");
-	port[4] = '\0';
+	//port[4] = '\0';
 	
 	servaddr.sin_port = htons(atoi(port));
 
