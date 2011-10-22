@@ -12,8 +12,10 @@
 
 
 #define MAXSOCKS 20
+
+/*
 #define MAXLINE 1024
 
 #ifndef max
 	#define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
-#endif
+#endif*/
