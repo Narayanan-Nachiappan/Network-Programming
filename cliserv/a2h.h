@@ -10,7 +10,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-
 #define MAXSOCKS 20
 #define MAXLINE 1024
 

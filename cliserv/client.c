@@ -1,13 +1,14 @@
 #include "unp.h"
 #include "unpifiplus.h"
+#include "a.h"
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
 
-int isLocalNetwork(char*, char*, char*);
+int initialConnect(FILE*, int, const SA*, socklen_t, char*);
 void send_cli(FILE*, int, const SA*, socklen_t);
 
 int main(int argc, char **argv){
-	err_msg("CSE 533 : Network Programming");
+	Fputs("CSE 533 : Network Programming\n",stdout);
 	err_msg("Amelia Ellison");
 	err_msg("Narayanan Saravanan");
 	err_msg("Youngbum Kim - 107387376");
@@ -16,7 +17,7 @@ int main(int argc, char **argv){
 	err_msg("client.c");
 	err_msg("----------------------------------------");
 	err_msg("Input (client.in)");
-	
+
 	FILE *clientin;
 	clientin=fopen ("client.in","r");
 	char serv_ip_addr[INET_ADDRSTRLEN];
@@ -56,7 +57,7 @@ int main(int argc, char **argv){
 	u_char *ptr;
 	int i;
 	int isLocal = 0, isSameHost = 0;
-	char bc_addr[20];
+	char bc_addr[INET_ADDRSTRLEN];
 
 	err_msg("Examine Client's IP Address: 127.0.0.1");
 	
@@ -161,7 +162,7 @@ int main(int argc, char **argv){
 	err_msg("Bind a socket");
 	
 	if (bind(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0){
-		err_msg("Bind error %d", errno);	
+		err_quit("bind error %d", errno);	
 	};
 	
 	struct sockaddr_in ss_cli, ss_serv;
@@ -170,7 +171,7 @@ int main(int argc, char **argv){
 	socklen_t len;
 	len = sizeof(ss_cli);
 	if (getsockname(sockfd, &ss_cli, &len) < 0){
-		err_quit("getsockname error");
+		err_quit("getsockname error %d", errno);
 	}
 	err_msg("IP Client");
 	err_msg("IP Address : %s", Inet_ntop(AF_INET, &ss_cli.sin_addr, str, sizeof(str)));
@@ -178,7 +179,6 @@ int main(int argc, char **argv){
 
 	err_msg("----------------------------------------");
 	err_msg("Connect a socket");
-	//port[4] = '\0';
 	
 	servaddr.sin_port = htons(atoi(port));
 
@@ -186,16 +186,46 @@ int main(int argc, char **argv){
 
 	len = sizeof(ss_serv);
 	if (getpeername(sockfd, &ss_serv, &len) < 0){
-		err_quit("getpeername error");
+		err_quit("getpeername error %d", errno);
 	}
-	err_msg("IP Server");
-	err_msg("IP Address : %s", Inet_ntop(AF_INET, &ss_serv.sin_addr, str, sizeof(str)));
-	err_msg("Well-known port number : %d", ss_serv.sin_port);
-		
+	
+	Fputs("IP Server\n",stdout);
+	Fputs("IP Address : ",stdout);
+	Fputs(Inet_ntop(AF_INET, &ss_serv.sin_addr, str, sizeof(str)) ,stdout);
+	Fputs("\n",stdout);
+	Fputs("Well-known port number : ",stdout);
+	err_msg("%d", ss_serv.sin_port);
+	
 	////////
+	Fputs("----------------------------------------\n",stdout);
+	Fputs("Initializing connection: send filename\n",stdout);
+	Fputs(file_name,stdout);
+	
+	int socketNum = initialConnect(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr), file_name);
+	
+	// change socket number and make another connection.
+
 	send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));
 
 	exit(0);
+}
+
+int initialConnect(FILE *fp, int sockfd, const SA *pservaddr, socklen_t servlen, char* filename){
+	int n;
+	char	sendline[MAXLINE], recvline[MAXLINE + 1];
+	struct message msg;
+
+	msg = messageFactory(HD_INIT,"Working");
+
+	// msg to char??
+
+	Writen(sockfd, sendline, strlen(sendline));
+	
+	n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
+	
+	recvline[n] = 0;	/* null terminate */
+
+	return atoi(recvline);
 }
 
 void send_cli(FILE *fp, int sockfd, const SA *pservaddr, socklen_t servlen){
@@ -205,43 +235,9 @@ void send_cli(FILE *fp, int sockfd, const SA *pservaddr, socklen_t servlen){
 	while (Fgets(sendline, MAXLINE, fp) != NULL) {
 		// changed Sendto to Writen
 		Writen(sockfd, sendline, strlen(sendline));
-
 		n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
 
 		recvline[n] = 0;	/* null terminate */
 		Fputs(recvline, stdout);
 	}
-}
-// Check if the two addr is in the local network
-int isLocalNetwork(char *cli_addr, char *serv_addr, char *mask_addr){
-	char addr1[4], addr2[4], addr3[4], addr4[4];
-	char addr5[4], addr6[4], addr7[4], addr8[4];
-	char addr9[4], addr10[4], addr11[4], addr12[4];
-	char *network_addr_cli = (char *) calloc(16, sizeof(char)); 
-	char *network_addr_serv = (char *) calloc(16, sizeof(char)); 
-	char cli_ip_addr[INET_ADDRSTRLEN];
-	char serv_ip_addr[INET_ADDRSTRLEN];
-
-	strcpy(cli_ip_addr, serv_addr);
-	strcpy(serv_ip_addr, serv_addr);
-
-	strcpy(addr1, strtok(cli_ip_addr, "."));
-	strcpy(addr2, strtok(NULL, "."));
-	strcpy(addr3, strtok(NULL, "."));
-	strcpy(addr4, strtok(NULL, "."));
-
-	strcpy(addr5, strtok(mask_addr, "."));
-	strcpy(addr6, strtok(NULL, "."));
-	strcpy(addr7, strtok(NULL, "."));
-	strcpy(addr8, strtok(NULL, "."));
-
-	strcpy(addr9, strtok(serv_ip_addr, "."));
-	strcpy(addr10, strtok(NULL, "."));
-	strcpy(addr11, strtok(NULL, "."));
-	strcpy(addr12, strtok(NULL, "."));
-
-	snprintf(network_addr_cli, sizeof(network_addr_cli), "%d.%d.%d.%d", atoi(addr1) & atoi(addr5), atoi(addr2) & atoi(addr6), atoi(addr3) & atoi(addr7), atoi(addr4) & atoi(addr8));
-	snprintf(network_addr_serv, sizeof(network_addr_serv), "%d.%d.%d.%d", atoi(addr9) & atoi(addr5), atoi(addr10) & atoi(addr6), atoi(addr11) & atoi(addr7), atoi(addr12) & atoi(addr8));
-
-	return strcmp(network_addr_cli, network_addr_serv);
 }

@@ -11,14 +11,12 @@ all: server client
 
 mask.o: mask.c
 	${CC} ${CFLAGS} -c mask.c
-client: client.o
+client: client.o get_ifi_info_plus.o mask.o
 	${CC} ${FLAGS} -o client client.o get_ifi_info_plus.o ${LIBS}
 udpcli01.o: udpcli01.c
 	${CC} ${CFLAGS} -c udpcli01.c
-	
 get_ifi_info_plus.o: get_ifi_info_plus.c
 	${CC} ${CFLAGS} -c get_ifi_info_plus.c
-
 server: server.o get_ifi_info_plus.o mask.o
 	${CC} ${FLAGS} -o server server.o get_ifi_info_plus.o mask.o ${LIBS}
 
