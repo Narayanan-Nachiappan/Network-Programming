@@ -13,14 +13,12 @@ static struct message {
 } send_msg, recv_msg;
 
 struct message messageFactory(int protocol, char *msg){
-	printf("hihi");
 	fflush(stdout);
 
 	struct message packet;
 	
 	switch(protocol){
 	case HD_INIT_CLI:
-		printf("hihi2");
 		
 		packet.type = protocol;
 		strcpy(packet.data, msg);
