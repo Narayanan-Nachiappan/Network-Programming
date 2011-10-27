@@ -1,24 +1,30 @@
 #include	"unp.h"
+#include	"struct.c"
 #include	<string.h>
 
 #define HD_INIT_CLI		1 // The client sends a datagram to the server giving the filename for the transfer.
 #define HD_INIT_SERV	2 // The server sends a datagram to the client giving the port number for connection socket.
 #define HD_ACK			3
 
-struct message{
-	uint32_t	seq;	/* sequence # */
-	uint32_t	ts;		/* timestamp when sent */
-	uint32_t	type;
-	char *msg;
-};
+static struct message {
+  uint32_t	seq;	/* sequence # */
+  uint32_t	ts;
+  unit32_t	type;
+  char	*data;		/* timestamp when sent */
+  
+} sendmsg, recvmsg;
 
 struct message messageFactory(int protocol, char *msg){
 	struct message packet;
-	packet.type = protocol;
-
-
-	printf("%d | %s", protocol, msg);
-
+	
+	switch(protocol){
+	case HD_INIT_CLI:
+		packet.type = protocol;
+		strcpy(packet.data, msg);
+		break;
+	case 2:
+		break;
+	}
 	return packet;
 }
 

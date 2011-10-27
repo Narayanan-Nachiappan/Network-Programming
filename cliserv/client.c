@@ -4,13 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int initialConnect(FILE*, int, const SA*, socklen_t, char*);
+struct message initialConnect(FILE*, int, const SA*, socklen_t, char*);
 void send_cli(FILE*, int, const SA*, socklen_t);
 
 int main(int argc, char **argv){
 	Fputs("CSE 533 : Network Programming\n",stdout);
-	err_msg("Amelia Ellison");
-	err_msg("Narayanan Saravanan");
+	err_msg("Amelia Ellison - 107838108");
+	err_msg("Narayanan Nachiappan - 107996031");
 	err_msg("Youngbum Kim - 107387376");
 	err_msg("Assignment #2");
 	err_msg("----------------------------------------");
@@ -201,31 +201,37 @@ int main(int argc, char **argv){
 	Fputs("Initializing connection: send filename\n",stdout);
 	Fputs(file_name,stdout);
 	
-	int socketNum = initialConnect(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr), file_name);
-	
+	// loop
+
+	initialConnect(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr), file_name);
+
+
+	if(isTypeOf(recvmsg, HD_INIT_SERV) > 0){
+		printf("msg : %s", recvmsg.data);
+	}
+
+	//
+
 	// change socket number and make another connection.
 
-	send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));
+	//send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));
 
 	exit(0);
 }
 
-int initialConnect(FILE *fp, int sockfd, const SA *pservaddr, socklen_t servlen, char* filename){
+struct message initialConnect(FILE *fp, int sockfd, const SA *pservaddr, socklen_t servlen, char* filename){
 	int n;
 	char	sendline[MAXLINE], recvline[MAXLINE + 1];
-	struct message msg;
 
-	msg = messageFactory(HD_INIT,"Working");
+	sendmsg = messageFactory(HD_INIT,"Working");
 
-	// msg to char??
-
-	Writen(sockfd, sendline, strlen(sendline));
+	Sendto(fd, (char *) &msg, sizeof(msg), 0, &pservaddr, sizeof(pservaddr));
+	//Writen(sockfd, sendline, strlen(sendline));
 	
-	n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
-	
-	recvline[n] = 0;	/* null terminate */
+	n = Recvfrom(fd, (char *)&recvmsg, MAXLINE, 0,  NULL, NULL);
+	//n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
 
-	return atoi(recvline);
+	return recvmsg;
 }
 
 void send_cli(FILE *fp, int sockfd, const SA *pservaddr, socklen_t servlen){
