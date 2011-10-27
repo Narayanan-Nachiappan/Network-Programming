@@ -194,20 +194,20 @@ int main(int argc, char **argv){
 	err_msg("IP Address : %s",Inet_ntop(AF_INET, &ss_serv.sin_addr, str, sizeof(str)));
 	err_msg("Well-known port number : %d",ss_serv.sin_port);
 	
-	////////
-	Fputs("----------------------------------------\n",stdout);
-	Fputs("Initializing connection: send filename\n",stdout);
-	Fputs(file_name,stdout);
+	err_msg("----------------------------------------");
+	err_msg("Initializing connection.");
+	err_msg("Filename : %s", file_name);
 	
-	// loop
-	messageFactory(HD_INIT_CLI,"Working");
-
 	send_msg = messageFactory(HD_INIT_CLI, file_name);
-
 	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
-	//Writen(sockfd, sendline, strlen(sendline));
-
+	
+	//////////////////
+	
 	recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL);
+	
+	// should check timeout
+	///////////////////
+	
 	//n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
 	printMessage(recv_msg);
 
