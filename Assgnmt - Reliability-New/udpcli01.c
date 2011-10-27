@@ -1,12 +1,6 @@
 #include	"unp.h"
+#include "struct.c"
 
-
-	static struct hdr {
-  uint32_t	seq;	/* sequence # */
-  uint32_t	ts;
-  char	*data;		/* timestamp when sent */
-  
-} sendhdr, recvhdr;
 
 
 void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen)
@@ -38,7 +32,7 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen)
 		Sendto(sockfd, (char *)&recvhdr, n, 0, pservaddr, servlen);
 		}
 
-		n = Recvfrom(sockfd, (char *)&recvhdr, MAXLINE, 0, pservaddr, &len);
+		n = Recvfrom(sockfd, (struct hdr *)&recvhdr, MAXLINE, 0, pservaddr, &len);
 		
 	}
 }
