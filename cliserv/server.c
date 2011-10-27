@@ -1,3 +1,4 @@
+#include "unp.h"
 #include "a.h"
 #include "a2h.h"
 #include "unpifiplus.h"
@@ -5,8 +6,8 @@
 void sig_chld(int signo);
 void mydg_echo(int sockfd, struct sockaddr *pcliaddr, socklen_t clilen, struct sockaddr * myaddr);
 void print_ifi(struct ifi_info	*ifi);
-void dg_echofun(FILE * fp,int sockfd, const SA *pcliaddr, socklen_t clilen);
-ssize_t dg_send_recv(int fd, const void *outbuff, size_t outbytes, void *inbuff, size_t inbytes, const SA *destaddr, socklen_t destlen)
+//void dg_echofun(FILE * fp,int sockfd, const SA *pcliaddr, socklen_t clilen);
+//ssize_t dg_send_recv(int fd, const void *outbuff, size_t outbytes, void *inbuff, size_t inbytes, const SA *destaddr, socklen_t destlen)
 
 //Custom structure
 struct sock_info 
@@ -142,17 +143,17 @@ int main(int argc, char **argv)
 					//******************NANA! Is there any function that just waits to receive one message and then sends an ack? If so, let me know
 					//and I can change this part to include it
 					//j = recvfrom(socklist[i], filename, MAXLINE, 0, (struct sockaddr *)&cliaddr, &clilen);
-					j = recvfrom(socklist[i], &recvhdr, sizeof(recvhdr), 0,  (struct sockaddr *)&cliaddr, &clilen));
+					j = recvfrom(socklist[i], (struct message *)&recv_msg, sizeof(recv_msg), 0,  (struct sockaddr *)&cliaddr, &clilen);
 					if(j == -1)
 					{
 						printf("recvfrom error %d\n, exiting", errno); //recvfrom error
 						exit(1);
 					}
 					
-					strcpy(address, recvhdr.data);
+					//strcpy(address, );
 					//rcv = (struct sockaddr *) cliaddr;
 					inet_ntop(AF_INET, &cliaddr.sin_addr, address, clilen);
-					printf("Received from %s, filename is %s, receivd %d bytes\n", address, filename, j);
+					printf("Received from %s, filename is %s, received %d bytes\n", address,  recv_msg.data, j);
 					
 					//test to see if the client is local
 					if(strcmp(address, "127.0.0.1") == 0) //don't test for localhost
@@ -214,7 +215,7 @@ int main(int argc, char **argv)
 					//sendto(socklist[i], sendline, strlen(sendline), 0, (struct sockaddr *)&cliaddr, clilen);
 					//**************************NANA! Am I using this correctly? I'm sending the port number as a string
 					//dg_sendrecv(socklist[i], msgrecv, 0 sendline, strlen(sendline), (struct sockaddr *) &cliaddr, clilen);					
-					close(socklist[i];
+					close(socklist[i]);
 					
 					//Start file transfer
 					//*************************NANA! This is where the file transfer starts
