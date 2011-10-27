@@ -1,3 +1,4 @@
+#include "a.h"
 #include "a2h.h"
 #include "unpifiplus.h"
 
@@ -31,7 +32,6 @@ int main(int argc, char **argv)
 	struct sockaddr 	*rcv;
 	fd_set 				rset;
 	char				filename[MAXLINE], rcvline[MAXLINE], sendline[MAXLINE], address[16];
-	msghdr				msgsend, msgrcv;
 
 	//Read information from server.in file
 	fp = fopen("server.in", "r");
@@ -141,12 +141,15 @@ int main(int argc, char **argv)
 					printf("Recvfrom\n");
 					//******************NANA! Is there any function that just waits to receive one message and then sends an ack? If so, let me know
 					//and I can change this part to include it
-					j = recvfrom(socklist[i], filename, MAXLINE, 0, (struct sockaddr *)&cliaddr, &clilen);
+					//j = recvfrom(socklist[i], filename, MAXLINE, 0, (struct sockaddr *)&cliaddr, &clilen);
+					j = recvfrom(socklist[i], &recvhdr, sizeof(recvhdr), 0,  (struct sockaddr *)&cliaddr, &clilen));
 					if(j == -1)
 					{
 						printf("recvfrom error %d\n, exiting", errno); //recvfrom error
 						exit(1);
 					}
+					
+					strcpy(address, recvhdr.data);
 					//rcv = (struct sockaddr *) cliaddr;
 					inet_ntop(AF_INET, &cliaddr.sin_addr, address, clilen);
 					printf("Received from %s, filename is %s, receivd %d bytes\n", address, filename, j);
@@ -210,12 +213,12 @@ int main(int argc, char **argv)
 					//ssize_t dg_send_recv(int fd, const void *outbuff, size_t outbytes, void *inbuff, size_t inbytes, const SA *destaddr, socklen_t destlen)
 					//sendto(socklist[i], sendline, strlen(sendline), 0, (struct sockaddr *)&cliaddr, clilen);
 					//**************************NANA! Am I using this correctly? I'm sending the port number as a string
-					dg_sendrecv(socklist[i], msgrecv, 0 sendline, strlen(sendline), (struct sockaddr *) &cliaddr, clilen);					
+					//dg_sendrecv(socklist[i], msgrecv, 0 sendline, strlen(sendline), (struct sockaddr *) &cliaddr, clilen);					
 					close(socklist[i];
 					
 					//Start file transfer
 					//*************************NANA! This is where the file transfer starts
-					dg_echofun(filename, connsock, (struct sockaddr *)&cliaddr, clilen);
+					//dg_echofun(filename, connsock, (struct sockaddr *)&cliaddr, clilen);
 					
 					exit(0);
 				}

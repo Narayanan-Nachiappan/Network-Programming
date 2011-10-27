@@ -8,10 +8,10 @@
 static struct message {
   uint32_t	seq;	/* sequence # */
   uint32_t	ts;
-  unit32_t	type;
+  uint32_t	type;
   char	*data;		/* timestamp when sent */
   
-} sendmsg, recvmsg;
+} send_msg, recv_msg;
 
 struct message messageFactory(int protocol, char *msg){
 	struct message packet;
