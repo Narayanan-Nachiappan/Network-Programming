@@ -206,8 +206,8 @@ int main(int argc, char **argv){
 	initialConnect(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr), file_name);
 
 
-	if(isTypeOf(recvmsg, HD_INIT_SERV) > 0){
-		printf("msg : %s", recvmsg.data);
+	if(isTypeOf(recv_msg, HD_INIT_SERV) > 0){
+		printf("msg : %s", recv_msg.data);
 	}
 
 	//
@@ -223,12 +223,12 @@ struct message initialConnect(FILE *fp, int sockfd, const SA *pservaddr, socklen
 	int n;
 	char	sendline[MAXLINE], recvline[MAXLINE + 1];
 
-	sendmsg = messageFactory(HD_INIT,"Working");
+	send_msg = messageFactory(HD_INIT,"Working");
 
 	Sendto(fd, (char *) &msg, sizeof(msg), 0, &pservaddr, sizeof(pservaddr));
 	//Writen(sockfd, sendline, strlen(sendline));
 	
-	n = Recvfrom(fd, (char *)&recvmsg, MAXLINE, 0,  NULL, NULL);
+	n = Recvfrom(fd, (char *)&recv_msg, MAXLINE, 0,  NULL, NULL);
 	//n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
 
 	return recvmsg;
