@@ -1,5 +1,4 @@
 #include	"unp.h"
-#include	"struct.c"
 #include	<string.h>
 
 #define HD_INIT_CLI		1 // The client sends a datagram to the server giving the filename for the transfer.
