@@ -13,20 +13,18 @@ static struct message {
 } send_msg, recv_msg;
 
 struct message messageFactory(int protocol, char *msg){
-	fflush(stdout);
-
 	struct message packet;
-	
-	switch(protocol){
-	case HD_INIT_CLI:
-		
-		packet.type = protocol;
-		strcpy(packet.data, msg);
-		break;
-	case 2:
-		break;
-	}
+	packet.type = protocol;
+	strcpy(packet.data, msg);
 	return packet;
+}
+
+void printMessage(struct message msg){
+	err_msg("Packet received");
+	err_msg("Time Stamp: %d", msg.ts);
+	err_msg("Sequence#: %d", msg.seq);
+	err_msg("Type: %d", msg.type);
+	err_msg("%s", msg.data);
 }
 
 int isTypeOf(struct message msg, int protocol){

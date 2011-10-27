@@ -202,16 +202,17 @@ int main(int argc, char **argv){
 	// loop
 	messageFactory(HD_INIT_CLI,"Working");
 
-	send_msg = messageFactory(HD_INIT_CLI,"Working");
+	send_msg = messageFactory(HD_INIT_CLI, file_name);
 
 	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 	//Writen(sockfd, sendline, strlen(sendline));
 
 	recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL);
 	//n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
+	printMessage(recv_msg);
 
 	if(isTypeOf(recv_msg, HD_INIT_SERV) > 0){
-		printf("msg : %s", recv_msg.data);
+		//
 	}
 
 	// change socket number and make another connection.
