@@ -1,10 +1,8 @@
-#include "unp.h"
 #include "unpifiplus.h"
 #include "a.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-struct message initialConnect(FILE*, int, const SA*, socklen_t, char*);
 void send_cli(FILE*, int, const SA*, socklen_t);
 
 int main(int argc, char **argv){
@@ -152,17 +150,18 @@ int main(int argc, char **argv){
 
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
+	
+	// use 0 as the port number. this will cause the kernel to bind an ephemeral port to the socket.
 	servaddr.sin_port = htons(0);
-	Inet_pton(AF_INET, serv_ip_addr, &servaddr.sin_addr);
-
 	sockfd = Socket(AF_INET, SOCK_DGRAM, 0);
 
 	// added
 	err_msg("----------------------------------------");
 	err_msg("Bind a socket");
 	
+	//Bind(sockfd, (SA *) &servaddr, sizeof(servaddr));
 	if (bind(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0){
-		err_quit("bind error %d", errno);	
+		err_quit("bind error %d", errno);
 	};
 	
 	struct sockaddr_in ss_cli, ss_serv;
@@ -170,71 +169,59 @@ int main(int argc, char **argv){
 
 	socklen_t len;
 	len = sizeof(ss_cli);
-	if (getsockname(sockfd, &ss_cli, &len) < 0){
+	if (getsockname(sockfd, (SA *) &ss_cli, &len) < 0){
 		err_quit("getsockname error %d", errno);
 	}
 	err_msg("IP Client");
-	err_msg("IP Address : %s", Inet_ntop(AF_INET, &ss_cli.sin_addr, str, sizeof(str)));
+	//err_msg("IP Address : %s", Inet_ntop(AF_INET, &ss_cli.sin_addr, str, sizeof(str)));
 	err_msg("Ephemeral port number assigned : %d", ss_cli.sin_port);
-
+	
 	err_msg("----------------------------------------");
 	err_msg("Connect a socket");
 	
+
+	Inet_pton(AF_INET, serv_ip_addr, &servaddr.sin_addr);
 	servaddr.sin_port = htons(atoi(port));
 
 	Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
 
 	len = sizeof(ss_serv);
-	if (getpeername(sockfd, &ss_serv, &len) < 0){
+	if (getpeername(sockfd, (SA *) &ss_serv, &len) < 0){
 		err_quit("getpeername error %d", errno);
 	}
 	
-	Fputs("IP Server\n",stdout);
-	Fputs("IP Address : ",stdout);
-	Fputs(Inet_ntop(AF_INET, &ss_serv.sin_addr, str, sizeof(str)) ,stdout);
-	Fputs("\n",stdout);
-	Fputs("Well-known port number : ",stdout);
-	err_msg("%d", ss_serv.sin_port);
+	err_msg("IP Server");
+	err_msg("IP Address : %s",Inet_ntop(AF_INET, &ss_serv.sin_addr, str, sizeof(str)));
+	err_msg("Well-known port number : %d",ss_serv.sin_port);
 	
-	////////
-	Fputs("----------------------------------------\n",stdout);
-	Fputs("Initializing connection: send filename\n",stdout);
-	Fputs(file_name,stdout);
+	err_msg("----------------------------------------");
+	err_msg("Initializing connection.");
+	err_msg("Filename : %s", file_name);
 	
-	// loop
-
-	initialConnect(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr), file_name);
-
+	send_msg = messageFactory(HD_INIT_CLI, file_name);
+	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
+	
+	//////////////////
+	
+	recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL);
+	
+	// should check timeout
+	///////////////////
+	
+	//n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
+	printMessage(recv_msg);
 
 	if(isTypeOf(recv_msg, HD_INIT_SERV) > 0){
-		printf("msg : %s", recv_msg.data);
+		//
 	}
 
-	//
-
 	// change socket number and make another connection.
-
 	//send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));
 
 	exit(0);
 }
 
-struct message initialConnect(FILE *fp, int sockfd, const SA *pservaddr, socklen_t servlen, char* filename){
-	int n;
-	char	sendline[MAXLINE], recvline[MAXLINE + 1];
-
-	send_msg = messageFactory(HD_INIT,"Working");
-
-	Sendto(fd, (char *) &msg, sizeof(msg), 0, &pservaddr, sizeof(pservaddr));
-	//Writen(sockfd, sendline, strlen(sendline));
-	
-	n = Recvfrom(fd, (char *)&recv_msg, MAXLINE, 0,  NULL, NULL);
-	//n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
-
-	return recvmsg;
-}
-
-void send_cli(FILE *fp, int sockfd, const SA *pservaddr, socklen_t servlen){
+void send_cli(FILE* fp, int sockfd, const SA *pservaddr, socklen_t servlen){
 	int	n;
 	char	sendline[MAXLINE], recvline[MAXLINE + 1];
 

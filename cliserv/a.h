@@ -1,4 +1,3 @@
-#include	"unp.h"
 #include	<string.h>
 
 #define HD_INIT_CLI		1 // The client sends a datagram to the server giving the filename for the transfer.
@@ -9,26 +8,27 @@ static struct message {
   uint32_t	seq;	/* sequence # */
   uint32_t	ts;
   uint32_t	type;
-  char	*data;		/* timestamp when sent */
+  char	data[MAXLINE];		/* timestamp when sent */
   
 } send_msg, recv_msg;
 
 struct message messageFactory(int protocol, char *msg){
 	struct message packet;
-	
-	switch(protocol){
-	case HD_INIT_CLI:
-		packet.type = protocol;
-		strcpy(packet.data, msg);
-		break;
-	case 2:
-		break;
-	}
+	packet.type = protocol;
+	strcpy(packet.data, msg);
 	return packet;
 }
 
-int isTypeOf(struct message, int protocol){
-	if (message.type == protocol) return 1;
+void printMessage(struct message msg){
+	err_msg("Packet received");
+	err_msg("Time Stamp: %d", msg.ts);
+	err_msg("Sequence#: %d", msg.seq);
+	err_msg("Type: %d", msg.type);
+	err_msg("%s", msg.data);
+}
+
+int isTypeOf(struct message msg, int protocol){
+	if (msg.type == protocol) return 1;
 	else return -1;
 }
 
