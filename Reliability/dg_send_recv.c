@@ -8,7 +8,7 @@
 
 static struct rtt_info   rttinfo;
 static int	rttinit = 0;
-static struct msghdr	msgsend, msgrecv;	/* assumed init to 0 */
+ int i=1;
 
 
 static void	sig_alrm(int signo);
@@ -16,6 +16,14 @@ static sigjmp_buf	jmpbuf;
 char prin[MAXLINE];
 
 
+
+ssize_t
+dg_send_recv_int(int fd, const char *outbuff, size_t outbytes,
+			 char *inbuff, size_t inbytes,
+			  SA *destaddr, socklen_t destlen)
+{
+
+}
 
 ssize_t
 dg_send_recv(int fd, const char *outbuff, size_t outbytes,
@@ -33,9 +41,9 @@ dg_send_recv(int fd, const char *outbuff, size_t outbytes,
 		rtt_d_flag = 1;
 	}
 	len=sizeof(destaddr);
-	sendhdr.seq++;
-	sendhdr.data = outbuff;
-	nbytes = sizeof(struct hdr);
+	send_msg.seq++;
+	strcpy(send_msg.data, outbuff);
+	nbytes = sizeof(struct message);
 	
 /* include dgsendrecv2 */
 	Signal(SIGALRM, sig_alrm);
@@ -43,9 +51,11 @@ dg_send_recv(int fd, const char *outbuff, size_t outbytes,
 
 sendagain:
 #ifdef	RTT_DEBUG
-	fprintf(stderr, "send %4d: ", sendhdr.seq);
+	fprintf(stderr, "send %4d: ", send_msg.seq);
+	
 #endif
-	Sendto(fd, (char *) &sendhdr, nbytes, 0, destaddr, destlen);
+	send_msg.ts = rtt_ts(&rttinfo);
+	Sendto(fd, (char *) &send_msg, nbytes, 0, destaddr, destlen);
 
 	alarm(rtt_start(&rttinfo));	/* calc timeout value & start timer */
 #ifdef	RTT_DEBUG
@@ -61,26 +71,29 @@ sendagain:
 		}
 #ifdef	RTT_DEBUG
 		err_msg("dg_send_recv: timeout, retransmitting");
+		fprintf(stderr,"\nReducing window size to  %d",i++);
 #endif
 		goto sendagain;
 	}
 
-if((sendhdr.seq%2)==0){
 	do {
-		n = Recvfrom(fd, (char *)&recvhdr, MAXLINE, 0,  NULL, NULL);
+		n = Recvfrom(fd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL);
 #ifdef	RTT_DEBUG
-		fprintf(stderr,"\nReceived ack for datagram %d , %d\n",sendhdr.seq-1,sendhdr.seq);
 
+		
+
+		
 #endif
-	} while ( recvhdr.seq != sendhdr.seq);
+	} while ( recv_msg.seq != send_msg.seq);
 	
 
-}
 	alarm(0);			/* stop SIGALRM timer */
 		/* 4calculate & store new RTT estimator values */
-	rtt_stop(&rttinfo, rtt_ts(&rttinfo) - recvhdr.ts);
-
-	return(recvhdr.seq);	/* return size of received datagram */
+	rtt_stop(&rttinfo, rtt_ts(&rttinfo) - recv_msg.ts);
+		fprintf(stderr,"\nReceived ack for datagram %d ",send_msg.seq);
+	if(i<recv_msg.wind_size){
+		fprintf(stderr,"\nIncreased window size %d ",i++);}
+	return(recv_msg.seq);	/* return size of received datagram */
 }
 
 static void

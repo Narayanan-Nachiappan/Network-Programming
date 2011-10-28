@@ -1,5 +1,5 @@
 #include	"unp.h"
-
+#include "struct.c"
 
 
 ssize_t	Dg_send_recv(int, const void *, size_t, void *, size_t,
@@ -8,12 +8,15 @@ ssize_t	Dg_send_recv(int, const void *, size_t, void *, size_t,
 
 void dg_echofun(FILE * fp,int sockfd, const SA *pcliaddr, socklen_t clilen)
 {
+	int i=1;
 	socklen_t	len;
 	char		mesg[MAXLINE];
 	ssize_t	n;
 	char	sendline[MAXLINE], recvline[MAXLINE + 1],prin[MAXLINE + 1];
+	fprintf(stderr, "Slow start#### Init wind size %4d ", i);
 	while (Fgets(sendline, MAXLINE, fp) != NULL) {
 		//Fputs(sendline,stdout);
+		
 		n = Dg_send_recv(sockfd, sendline, strlen(sendline),
 						 recvline, MAXLINE, pcliaddr, clilen);
 		
@@ -58,6 +61,8 @@ main(int argc, char **argv)
 	sprintf(mesg,"Init reply from server");
 	Sendto(sockfd, mesg, sizeof(mesg), 0, pcliaddr, len);
 	Fputs("\nStarting File transfer\n",stdout);
+
+	//------------------Method for server-------------------------------------------
 	dg_echofun(stdin,sockfd, (SA *) &cliaddr, len);
 	return 0;
 }

@@ -112,7 +112,7 @@ int
 rtt_timeout(struct rtt_info *ptr)
 {
 	ptr->rtt_rto *= 2;		/* next RTO */
-	rtt_minmax(RTT_RTOCALC(ptr));
+	//ptr->rtt_rto=rtt_minmax(RTT_RTOCALC(ptr));
 	ptr->rtt_rto = rtt_minmax(RTT_RTOCALC(ptr));
 	if (++ptr->rtt_nrexmt > RTT_MAXNREXMT)
 		return(-1);			/* time to give up for this packet */

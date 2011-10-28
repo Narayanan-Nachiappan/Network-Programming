@@ -1,41 +1,51 @@
 #include	"unp.h"
+#include "struct.c"
+#include	"unprtt.h"
 
 
-	static struct hdr {
-  uint32_t	seq;	/* sequence # */
-  uint32_t	ts;
-  char	*data;		/* timestamp when sent */
-  
-} sendhdr, recvhdr;
-
-
-void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen)
+void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize)
 {
 
 	int n;
 	 socklen_t len;
 	int i=1;
 	char	sendline[MAXLINE], recvline[MAXLINE ],outstr[MAXLINE + 1];
-	
+	static struct rtt_info   rttinfo;
+static int	rttinit = 0;
 		len=servlen;
-		n = Recvfrom(sockfd, (char*)&recvhdr, MAXLINE, 0, pservaddr, &len);
+		fprintf(stderr,"\n window size %d ",windSize);
+		n = Recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, pservaddr, &len);
 	while (n>0) {
 		
 		recvline[n] = 0;	/* null terminate */
-		sprintf(outstr,"\nrecv datagram %d from server\n",i);
+		sprintf(outstr,"\nrecv datagram %d from server\n",recv_msg.seq);
 		Fputs(outstr,stdout);
 		fflush(stdout);
-		fprintf(stderr,"\n %d",recvhdr.seq);
-		if((i%2)==0){
+		fprintf(stderr,"\n %s",recv_msg.data);
 
-		sprintf(outstr,"\nsending ack for received datagram %d , %d\n",i-1,i);
+		//fprintf(stderr,"\n %d",recv_msg.seq);
+
+	//	if((recv_msg.seq%2)==0){
+		if (rttinit == 0) {
+		rtt_init(&rttinfo);		/* first time we're called */
+		rttinit = 1;
+		rtt_d_flag = 1;
+	}
+	rtt_newpack(&rttinfo);		/* initialize for this packet */
+	send_msg.ts = rtt_ts(&rttinfo);
+
+
+		sprintf(outstr,"\nsending ack for received datagram %d \n",recv_msg.seq);
 		Fputs(outstr,stdout);
-		
+		send_msg.seq=recv_msg.seq;
+		strcpy(send_msg.data,"ACK");
+		send_msg.wind_size=windSize;
+
 		fflush(stdout);
-		Sendto(sockfd, (char *)&recvhdr, n, 0, pservaddr, servlen);
-		}
-		i++;
-		n = Recvfrom(sockfd, (char *)&recvhdr, MAXLINE, 0, pservaddr, &len);
+		Sendto(sockfd, (char *)&send_msg, n, 0, pservaddr, servlen);
+	//	}
+
+		n = Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, pservaddr, &len);
 		
 	}
 }
@@ -51,6 +61,7 @@ main(int argc, char **argv)
 	int					sockfd;
 	struct sockaddr_in	servaddr;
 	int	n;
+	uint32_t wind_size=10;
 	char	sendline[MAXLINE], recvline[MAXLINE + 1];
 	const SA *pservaddr;
 	if (argc != 2)
@@ -79,8 +90,8 @@ main(int argc, char **argv)
 	Fputs("####", stdout);
 	Fputs(recvline, stdout);
 	fflush(stdout);
-
-	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr));
+//----------------------------------------Method for cli---------------------
+	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),wind_size);
 
 	exit(0);
 }
