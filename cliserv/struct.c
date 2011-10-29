@@ -1,7 +1,9 @@
 
-static struct hdr {
+static struct message {
   uint32_t	seq;	/* sequence # */
   uint32_t	ts;
-  char	*data;		/* timestamp when sent */
+  uint32_t wind_size;
+  uint32_t	type;
+  char	data[MAXLINE];		/* timestamp when sent */
   
-} sendhdr, recvhdr;
+} send_msg, recv_msg;
