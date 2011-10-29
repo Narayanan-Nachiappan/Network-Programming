@@ -13,16 +13,12 @@ mask.o: mask.c
 	${CC} ${CFLAGS} -c mask.c
 client: client.o get_ifi_info_plus.o mask.o
 	${CC} ${FLAGS} -o client client.o get_ifi_info_plus.o ${LIBS}
-dg_send_recv.o: dg_send_recv.c
-	${CC} ${CFLAGS} -c dg_send_recv.c
 udpcli01.o: udpcli01.c
 	${CC} ${CFLAGS} -c udpcli01.c
-udpserv01.o: udpserv01.c
-	${CC} ${CFLAGS} -c udpserv01.c
 get_ifi_info_plus.o: get_ifi_info_plus.c
 	${CC} ${CFLAGS} -c get_ifi_info_plus.c
-server: server.o get_ifi_info_plus.o mask.o udpserv01.o dg_send_recv.o
-	${CC} ${FLAGS} -o server server.o get_ifi_info_plus.o mask.o udpserv01.o dg_send_recv.o ${LIBS}
+server: server.o get_ifi_info_plus.o mask.o
+	${CC} ${FLAGS} -o server server.o get_ifi_info_plus.o mask.o ${LIBS}
 
 clean:
 	rm server get_ifi_info_plus.o mask.o client

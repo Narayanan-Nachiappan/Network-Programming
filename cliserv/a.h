@@ -1,4 +1,5 @@
 #include	<string.h>
+#include "unprtt.h"
 
 #define HD_INIT_CLI		1 // The client sends a datagram to the server giving the filename for the transfer.
 #define HD_INIT_SERV	2 // The server sends a datagram to the client giving the port number for connection socket.
@@ -7,6 +8,7 @@
 static struct message {
   uint32_t	seq;	/* sequence # */
   uint32_t	ts;
+  uint32_t wind_size;
   uint32_t	type;
   char	data[MAXLINE];		/* timestamp when sent */
   
@@ -19,17 +21,67 @@ struct message messageFactory(int protocol, char *msg){
 	return packet;
 }
 
+int getIntMsg(struct message msg){
+	return atoi(msg.data);
+}
+
 void printMessage(struct message msg){
+	err_msg("----------------------------------------");
 	err_msg("Packet received");
 	err_msg("Time Stamp: %d", msg.ts);
 	err_msg("Sequence#: %d", msg.seq);
 	err_msg("Type: %d", msg.type);
-	err_msg("%s", msg.data);
+	err_msg("Message: %s", msg.data);
 }
 
 int isTypeOf(struct message msg, int protocol){
 	if (msg.type == protocol) return 1;
 	else return -1;
+}
+
+void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize){
+	int n;
+	socklen_t len;
+	int i=1;
+	char	sendline[MAXLINE], recvline[MAXLINE ],outstr[MAXLINE + 1];
+	static struct rtt_info   rttinfo;
+	static int	rttinit = 0;
+		len=servlen;
+		fprintf(stderr,"\n window size %d ",windSize);
+		n = Recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, pservaddr, &len);
+	while (n>0) {
+		
+		recvline[n] = 0;	/* null terminate */
+		sprintf(outstr,"\nrecv datagram %d from server\n",recv_msg.seq);
+		Fputs(outstr,stdout);
+		fflush(stdout);
+		fprintf(stderr,"\n %s",recv_msg.data);
+
+		//fprintf(stderr,"\n %d",recv_msg.seq);
+
+	//	if((recv_msg.seq%2)==0){
+		if (rttinit == 0) {
+		rtt_init(&rttinfo);		/* first time we're called */
+		rttinit = 1;
+		rtt_d_flag = 1;
+	}
+	rtt_newpack(&rttinfo);		/* initialize for this packet */
+	send_msg.ts = rtt_ts(&rttinfo);
+
+
+		sprintf(outstr,"\nsending ack for received datagram %d \n",recv_msg.seq);
+		Fputs(outstr,stdout);
+		send_msg.seq=recv_msg.seq;
+		strcpy(send_msg.data,"ACK");
+		send_msg.wind_size=windSize;
+
+		fflush(stdout);
+		Writen(sockfd, (char *)&send_msg, n);
+	//	}
+
+		n = Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, pservaddr, &len);
+		
+	}
 }
 
 

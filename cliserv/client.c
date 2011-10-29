@@ -202,20 +202,27 @@ int main(int argc, char **argv){
 	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 	
 	//////////////////
+	//Read(sockfd, (struct message *)&recv_msg, MAXLINE);
+	do{
+		err_msg("Waiting for initial packet from the server.");
+		Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, NULL,NULL);
+		//Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, (SA *) &servaddr, sizeof(servaddr));
 	
-	recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL);
+		// should check timeout
+		///////////////////
 	
-	// should check timeout
-	///////////////////
-	
-	//n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
-	printMessage(recv_msg);
+		//n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
+		printMessage(recv_msg);
+		if(isTypeOf(recv_msg, HD_INIT_SERV) < 0){
+			err_msg("Different protocol type.");
+		}
+	} while(isTypeOf(recv_msg, HD_INIT_SERV) < 0);
 
-	if(isTypeOf(recv_msg, HD_INIT_SERV) > 0){
-		//
-	}
+		servaddr.sin_port = htons(getIntMsg(recv_msg));
+		Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
+		dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
 
-	// change socket number and make another connection.
+	//change socket number and make another connection.
 	//send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));
 
 	exit(0);

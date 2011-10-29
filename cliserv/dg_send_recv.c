@@ -44,7 +44,7 @@ sendagain:
 #ifdef	RTT_DEBUG
 	fprintf(stderr, "send %4d: ", sendhdr.seq);
 #endif
-	send(fd, (char *) &sendhdr, nbytes, 0);
+	Sendto(fd, (char *) &sendhdr, nbytes, 0, destaddr, destlen);
 
 	alarm(rtt_start(&rttinfo));	/* calc timeout value & start timer */
 #ifdef	RTT_DEBUG

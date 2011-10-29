@@ -28,11 +28,11 @@ int main(int argc, char **argv)
 	const int			on = 1;
 	pid_t				pid;
 	struct ifi_info		*ifi, *ifihead;
-	socklen_t 			clilen, clilen2, servlen;
-	struct sockaddr_in	*sa, cliaddr, cliaddr2, *servaddr;
+	socklen_t 			clilen, servlen;
+	struct sockaddr_in	*sa, cliaddr, *servaddr;
 	struct sockaddr 	*rcv;
 	fd_set 				rset;
-	char				filename[MAXLINE], rcvline[MAXLINE], portnum[10], address[16];
+	char				filename[MAXLINE], rcvline[MAXLINE], sendline[MAXLINE], address[16];
 
 	//Read information from server.in file
 	fp = fopen("server.in", "r");
@@ -201,10 +201,7 @@ int main(int argc, char **argv)
 					
 					//Connect to connection socket
 					printf("Ephemeral Port: %d\n", ntohs(servaddr->sin_port));
-					cliaddr2 = cliaddr;
-					cliaddr2.sin_port = servaddr->sin_port;
-					clilen2 = sizeof(cliaddr2);
-					if(connect(connsock, (struct sockaddr *) &cliaddr2, clilen2) < 0)
+					if(connect(connsock, (struct sockaddr *) servaddr, servlen) < 0)
 					{
 						printf("connect connsock error, %d\n", errno);
 						exit(1);
@@ -212,22 +209,17 @@ int main(int argc, char **argv)
 					
 					//Send ephemeral port number to client
 					printf("Connsock connected! Sending ephemeral port number\n");
-					sprintf(portnum, "%d", ntohs(servaddr->sin_port));
+					sprintf(sendline, "%d", ntohs(servaddr->sin_port));
 					
 					//ssize_t dg_send_recv(int fd, const void *outbuff, size_t outbytes, void *inbuff, size_t inbytes, const SA *destaddr, socklen_t destlen)
 					//sendto(socklist[i], sendline, strlen(sendline), 0, (struct sockaddr *)&cliaddr, clilen);
-					
-					send_msg = messageFactory(HD_INIT_SERV, portnum);
-					dg_send_recv(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen);
-					
 					//**************************NANA! Am I using this correctly? I'm sending the port number as a string
 					//dg_sendrecv(socklist[i], msgrecv, 0 sendline, strlen(sendline), (struct sockaddr *) &cliaddr, clilen);					
 					close(socklist[i]);
 					
 					//Start file transfer
 					//*************************NANA! This is where the file transfer starts
-					printf("Sending file: %s\n", recv_msg.data);
-					dg_echofun(recv_msg.data, connsock, (struct sockaddr *)&cliaddr2, clilen2);
+					//dg_echofun(filename, connsock, (struct sockaddr *)&cliaddr, clilen);
 					
 					exit(0);
 				}
