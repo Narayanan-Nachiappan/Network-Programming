@@ -217,6 +217,8 @@ int main(int argc, char **argv){
 			err_msg("Different protocol type.");
 		}
 	} while(isTypeOf(recv_msg, HD_INIT_SERV) < 0);
+		//send_msg = messageFactory(HD_INIT_ACK, "I'm ready!"); // send ack to the server
+		//Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
 		servaddr.sin_port = htons(getIntMsg(recv_msg));
 		Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
@@ -226,18 +228,4 @@ int main(int argc, char **argv){
 	//send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));
 
 	exit(0);
-}
-
-void send_cli(FILE* fp, int sockfd, const SA *pservaddr, socklen_t servlen){
-	int	n;
-	char	sendline[MAXLINE], recvline[MAXLINE + 1];
-
-	while (Fgets(sendline, MAXLINE, fp) != NULL) {
-		// changed Sendto to Writen
-		Writen(sockfd, sendline, strlen(sendline));
-		n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
-
-		recvline[n] = 0;	/* null terminate */
-		Fputs(recvline, stdout);
-	}
 }

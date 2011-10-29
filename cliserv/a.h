@@ -3,7 +3,7 @@
 
 #define HD_INIT_CLI		1 // The client sends a datagram to the server giving the filename for the transfer.
 #define HD_INIT_SERV	2 // The server sends a datagram to the client giving the port number for connection socket.
-#define HD_ACK			3
+#define HD_INIT_ACK		3 // The client sends a acknolodge to the server
 
 static struct message {
   uint32_t	seq;	/* sequence # */
@@ -48,9 +48,13 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 	static int	rttinit = 0;
 		len=servlen;
 		fprintf(stderr,"\n window size %d ",windSize);
-		n = Recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, pservaddr, &len);
-	while (n>0) {
 		
+		n = Read(sockfd, (char*)&recv_msg, MAXLINE);
+		
+		//n = recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, pservaddr, &len);
+		//n = Recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, NULL, NULL);
+	while (n>0) {
+		printf("hohoho");
 		recvline[n] = 0;	/* null terminate */
 		sprintf(outstr,"\nrecv datagram %d from server\n",recv_msg.seq);
 		Fputs(outstr,stdout);
