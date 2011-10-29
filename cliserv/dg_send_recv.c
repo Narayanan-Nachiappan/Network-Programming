@@ -56,8 +56,8 @@ sendagain:
 	
 #endif
 	send_msg.ts = rtt_ts(&rttinfo);
-	//Sendto(fd, (char *) &send_msg, nbytes, 0, destaddr, destlen);
-	send(fd, (char *) &send_msg, nbytes, 0);
+	Sendto(fd, (char *) &send_msg, nbytes, 0, destaddr, destlen);
+	//send(fd, (char *) &send_msg, nbytes, 0);
 
 	alarm(rtt_start(&rttinfo));	/* calc timeout value & start timer */
 #ifdef	RTT_DEBUG
@@ -79,7 +79,8 @@ sendagain:
 	}
 
 	do {
-		n = Recvfrom(fd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL);
+		//n = Recvfrom(fd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL);
+		n = recv(fd, (struct message *)&recv_msg, MAXLINE, 0);
 #ifdef	RTT_DEBUG
 
 		
@@ -92,7 +93,8 @@ sendagain:
 	alarm(0);			/* stop SIGALRM timer */
 		/* 4calculate & store new RTT estimator values */
 	rtt_stop(&rttinfo, rtt_ts(&rttinfo) - recv_msg.ts);
-		fprintf(stderr,"\nReceived ack for datagram %d ",send_msg.seq);
+		fprintf(stderr,"\nReceived ack for datagram %d ",recv_msg.seq);
+		fprintf(stderr,"\nReceived data %s ",recv_msg.data);
 	if(i<recv_msg.wind_size){
 		fprintf(stderr,"\nIncreased window size %d ",i++);}
 	return(recv_msg.seq);	/* return size of received datagram */

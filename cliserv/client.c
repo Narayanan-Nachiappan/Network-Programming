@@ -221,6 +221,7 @@ int main(int argc, char **argv){
 		//Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
 		servaddr.sin_port = htons(getIntMsg(recv_msg));
+		printf("Port = %d\n", servaddr.sin_port);
 		Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
 		dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
 
