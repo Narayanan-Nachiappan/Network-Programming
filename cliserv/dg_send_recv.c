@@ -56,7 +56,7 @@ sendagain:
 	
 #endif
 	send_msg.ts = rtt_ts(&rttinfo);
-	Sendto(fd, (char *) &send_msg, nbytes, 0, destaddr, destlen);
+	sendto(fd, (char *) &send_msg, nbytes, 0, destaddr, destlen);
 	//send(fd, (char *) &send_msg, nbytes, 0);
 
 	alarm(rtt_start(&rttinfo));	/* calc timeout value & start timer */
@@ -79,8 +79,8 @@ sendagain:
 	}
 
 	do {
-		//n = Recvfrom(fd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL);
-		n = recv(fd, (struct message *)&recv_msg, MAXLINE, 0);
+		n = Recvfrom(fd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL);
+		//n = recv(fd, (struct message *)&recv_msg, MAXLINE, 0);
 #ifdef	RTT_DEBUG
 
 		
@@ -124,7 +124,7 @@ Dg_send_recv(int fd, const char *outbuff, size_t outbytes,
 	return(n);
 }
 
-void dg_echofun(FILE * fp,int sockfd, const SA *pcliaddr, socklen_t clilen)
+void dg_echofun(FILE * fp,int sockfd, SA *pcliaddr, socklen_t clilen)
 {
 	int i=1;
 	socklen_t	len;

@@ -27,6 +27,7 @@ int main(int argc, char **argv){
 	char seed[20];
 	char loss[20];
 	char mean[20];
+	char recvline[MAXLINE];
 	
 	fscanf(clientin,"%s", serv_ip_addr);
 	fscanf(clientin,"%s", port);
@@ -183,7 +184,11 @@ int main(int argc, char **argv){
 	Inet_pton(AF_INET, serv_ip_addr, &servaddr.sin_addr);
 	servaddr.sin_port = htons(atoi(port));
 
-	Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
+	if(connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0)
+	{
+		printf("connect error %d\n", errno);
+		exit(1);
+	}
 
 	len = sizeof(ss_serv);
 	if (getpeername(sockfd, (SA *) &ss_serv, &len) < 0){
@@ -220,19 +225,25 @@ int main(int argc, char **argv){
 		//send_msg = messageFactory(HD_INIT_ACK, "I'm ready!"); // send ack to the server
 		//Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
-<<<<<<< HEAD
 		//servaddr.sin_port = htons(getIntMsg(recv_msg));
-		//Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
-
-		//Recvfrom(sockfd, (char *)&file_name, MAXLINE, 0, NULL,NULL);
-
-		printf("hm? : %s", file_name);
-=======
-		servaddr.sin_port = htons(getIntMsg(recv_msg));
-		printf("Port = %d\n", servaddr.sin_port);
-		Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
->>>>>>> b348972922e8c2959c2e1f1ca290dd374e1bcbe0
-		dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
+		//servaddr.sin_port = getIntMsg(recv_msg);
+		
+		if(connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0)
+		{
+			printf("connect failed! Errno = %d\n", errno);
+			exit(1);
+		}
+		
+		err_msg("Reconnect:");
+		err_msg("IP Address : %s",Inet_ntop(AF_INET, &servaddr.sin_addr, str, sizeof(str)));
+		err_msg("Well-known port number : %d", servaddr.sin_port);
+		
+		len = sizeof(servaddr);
+		//recv(sockfd, recvline, MAXLINE, 0);
+		recvfrom(sockfd, recvline, MAXLINE, 0, (SA *) &servaddr, &len);
+		printf("%s\n", recvline);
+		//read(sockfd, recvline, MAXLINE);
+		//dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
 
 	//change socket number and make another connection.
 	//send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));

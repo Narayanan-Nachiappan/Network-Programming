@@ -49,10 +49,11 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		len=servlen;
 		fprintf(stderr,"\n window size %d ",windSize);
 		
-		n = Read(sockfd, (char*)&recv_msg, MAXLINE);
+		//n = read(sockfd, (char*)&recv_msg, MAXLINE);
 		
 		//n = recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, pservaddr, &len);
-		//n = Recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, NULL, NULL);
+		//n = recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, NULL, NULL);
+		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
 	while (n>0) {
 		printf("hohoho");
 		recvline[n] = 0;	/* null terminate */

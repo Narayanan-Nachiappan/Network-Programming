@@ -202,7 +202,7 @@ int main(int argc, char **argv)
 					}
 					
 					//Connect to connection socket
-					printf("Ephemeral Port: %d\n", ntohs(servaddr->sin_port));
+					printf("Ephemeral Port: %d\n", servaddr->sin_port);
 										
 					cliaddr2 = cliaddr;
 					cliaddr2.sin_port = servaddr->sin_port;
@@ -215,7 +215,7 @@ int main(int argc, char **argv)
 					
 					//Send ephemeral port number to client
 					printf("Connsock connected! Sending ephemeral port number\n");
-					sprintf(portnum, "%d", ntohs(servaddr->sin_port));
+					sprintf(portnum, "%d", servaddr->sin_port);
 					
 					//ssize_t dg_send_recv(int fd, const void *outbuff, size_t outbytes, void *inbuff, size_t inbytes, const SA *destaddr, socklen_t destlen)
 					//sendto(socklist[i], sendline, strlen(sendline), 0, (struct sockaddr *)&cliaddr, clilen);
@@ -243,24 +243,24 @@ int main(int argc, char **argv)
 						exit(1);
 					}
 
+					printf("Reconnect:");
+					printf("IP Address : %s\n",Inet_ntop(AF_INET, &cliaddr2.sin_addr, rcvline, sizeof(rcvline)));
+					printf("Well-known port number : %d\n", cliaddr2.sin_port);
+					if(send(connsock, filename, strlen(filename), 0) < 0)
+					{
+						printf("send error %d\n", errno);
+					}
 					//sendto(connsock, filename, strlen(filename), 0, (struct sockaddr *)&cliaddr2, clilen2);
-					//sendto(connsock, filename, strlen(filename), 0, (struct sockaddr *)&cliaddr, clilen);
-					//send(socklist[, filename, strlen(filename), 0);
+					sendto(socklist[i], filename, strlen(filename), 0, (struct sockaddr *)&cliaddr, clilen);
+					//send(socklist[i], filename, strlen(filename), 0);
 					//dg_echofun(fp, connsock, (struct sockaddr *)&cliaddr2, clilen2);
-					dg_echofun(fp, socklist[i], (struct sockaddr *)&cliaddr, clilen);
+					//dg_echofun(fp, socklist[i], (struct sockaddr *)&cliaddr, clilen);
 					
 					exit(0);
 				}
 			}
 		}		
 	}
-	/*
-	if ( (pid = Fork()) == 0) 
-	{	
-		// child 
-		mydg_echo(sockfd, (SA *) &cliaddr, sizeof(cliaddr), (SA *) sa);
-		exit(0);		// never executed
-	}*/
 }
 
 //SIGCHLD Handler p138
