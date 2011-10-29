@@ -21,5 +21,5 @@ server: server.o get_ifi_info_plus.o mask.o dg_send_recv.o
 	${CC} ${FLAGS} -o server server.o get_ifi_info_plus.o mask.o dg_send_recv.o ${LIBS}
 
 clean:
-	rm server get_ifi_info_plus.o mask.o client dg_send_recv.o
+	rm server server.o get_ifi_info_plus.o mask.o client client.o dg_send_recv.o
 

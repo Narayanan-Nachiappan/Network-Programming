@@ -220,12 +220,18 @@ int main(int argc, char **argv){
 		//send_msg = messageFactory(HD_INIT_ACK, "I'm ready!"); // send ack to the server
 		//Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
+<<<<<<< HEAD
 		//servaddr.sin_port = htons(getIntMsg(recv_msg));
 		//Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
 
 		//Recvfrom(sockfd, (char *)&file_name, MAXLINE, 0, NULL,NULL);
 
 		printf("hm? : %s", file_name);
+=======
+		servaddr.sin_port = htons(getIntMsg(recv_msg));
+		printf("Port = %d\n", servaddr.sin_port);
+		Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
+>>>>>>> b348972922e8c2959c2e1f1ca290dd374e1bcbe0
 		dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
 
 	//change socket number and make another connection.

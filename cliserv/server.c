@@ -203,6 +203,7 @@ int main(int argc, char **argv)
 					
 					//Connect to connection socket
 					printf("Ephemeral Port: %d\n", ntohs(servaddr->sin_port));
+										
 					cliaddr2 = cliaddr;
 					cliaddr2.sin_port = servaddr->sin_port;
 					clilen2 = sizeof(cliaddr2);
@@ -222,11 +223,12 @@ int main(int argc, char **argv)
 					send_msg.type = 2;
 					strcpy(send_msg.data, portnum);
 					sendto(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen);
+					
 					//dg_send_recv(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen);
 					//dg_send_recv(socklist[i], portnum, strlen(portnum), 0, (struct sockaddr *)&cliaddr, clilen, 2);
 					//**************************NANA! Am I using this correctly? I'm sending the port number as a string
 					//dg_sendrecv(socklist[i], msgrecv, 0 sendline, strlen(sendline), (struct sockaddr *) &cliaddr, clilen);					
-					close(socklist[i]);
+					//close(socklist[i]);
 					
 					//Start file transfer
 					//*************************NANA! This is where the file transfer starts
@@ -240,13 +242,12 @@ int main(int argc, char **argv)
 						printf("Server child error: file open\n");
 						exit(1);
 					}
-					/*
-					while (Fgets(sendline, MAXLINE, fp) != NULL) 
-					{
-						//Fputs(sendline,stdout);
-						fprintf(stderr, "%s", sendline);
-					}*/
-					dg_echofun(fp, connsock, (struct sockaddr *)&cliaddr2, clilen2);
+
+					//sendto(connsock, filename, strlen(filename), 0, (struct sockaddr *)&cliaddr2, clilen2);
+					//sendto(connsock, filename, strlen(filename), 0, (struct sockaddr *)&cliaddr, clilen);
+					//send(socklist[, filename, strlen(filename), 0);
+					//dg_echofun(fp, connsock, (struct sockaddr *)&cliaddr2, clilen2);
+					dg_echofun(fp, socklist[i], (struct sockaddr *)&cliaddr, clilen);
 					
 					exit(0);
 				}
