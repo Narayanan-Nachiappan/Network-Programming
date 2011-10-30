@@ -6,6 +6,7 @@
 #define HD_FILE			3 // The server sends a packet to the client .
 #define HD_FILE_ACK		4 // The client sends a acknolodge to the server for the packet
 #define HD_INIT_ACK		5 // The client sends a acknolodge to the server for the init connection
+#define HD_EOF_FILE		6 // The server indicates client the EOF
 
 struct queueNode{
 	char data[MAXLINE];
@@ -16,8 +17,8 @@ static struct message {
   uint32_t	seq;	/* sequence # */
   uint32_t	ts;
   uint32_t wind_size;
-  uint32_t	type;
-  char	data[MAXLINE];		/* timestamp when sent */
+  uint32_t	type;		/* timestamp when sent */
+  char	data[496];
   
 } send_msg, recv_msg;
 
@@ -77,7 +78,7 @@ int getIntMsg(struct message msg){
 
 void printMessage(struct message msg){
 	err_msg("----------------------------------------");
-	err_msg("Packet received");
+	err_msg("Packet received (%d Byte)", sizeof(msg));
 	err_msg("Time Stamp: %d", msg.ts);
 	err_msg("Sequence#: %d", msg.seq);
 	err_msg("Type: %d", msg.type);
@@ -101,29 +102,38 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
 	while (n>0) {
 		enqueue(recv_msg.data);
+		
 		printMessage(recv_msg);
 		//printQueue();
 
 		if (rttinit == 0) {
-		rtt_init(&rttinfo);		/* first time we're called */
-		rttinit = 1;
-		rtt_d_flag = 1;
-	}
-	rtt_newpack(&rttinfo);		/* initialize for this packet */
-	send_msg.ts = rtt_ts(&rttinfo);
+			rtt_init(&rttinfo);		/* first time we're called */
+			rttinit = 1;
+			rtt_d_flag = 1;
+		}
+		rtt_newpack(&rttinfo);		/* initialize for this packet */
+		send_msg.ts = rtt_ts(&rttinfo);
 
-	sprintf(outstr,"* sending ack for received datagram %d \n",recv_msg.seq);
-	Fputs(outstr,stdout);
-	send_msg.seq=recv_msg.seq;
-	send_msg.type = HD_FILE_ACK;
-	strcpy(send_msg.data,"ACK");
-	send_msg.wind_size=windSize;
+		sprintf(outstr,"* sending ack for received datagram %d \n",recv_msg.seq);
+		Fputs(outstr,stdout);
+		send_msg.seq=recv_msg.seq;
+		send_msg.type = HD_FILE_ACK;
+		strcpy(send_msg.data,"ACK");
+		send_msg.wind_size=windSize;
 
-	fflush(stdout);
-	Writen(sockfd, (char *)&send_msg, n);
+		fflush(stdout);
+		Writen(sockfd, (char *)&send_msg, n);
 
-	n = Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, pservaddr, &len);
-		
+		if(recv_msg.type == HD_EOF_FILE){
+			err_msg("EOF");
+			err_msg("Client in TIME_WAIT status");
+			break;
+		} else if(recv_msg.type == HD_FILE){
+			n = Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, pservaddr, &len);	
+		} else if(recv_msg.type == 0){
+			err_msg("Wrong protocol");
+			n = Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, pservaddr, &len);	
+		}
 	}
 }
 
@@ -162,5 +172,12 @@ int isLocalNetwork(char *cli_addr, char *serv_addr, char *mask_addr){
 }
 
 void *printBuffer(){ // thread that dequeues and prints recv_buffer
+	
 	printf("Thread Test");
+}
+
+int expo(int seed, int miu){
+	//int result = -1 * ln(random(seed)) * miu;
+	//return result;
+	return 0;
 }

@@ -209,11 +209,10 @@ int main(int argc, char **argv){
 		err_msg("Waiting for initial packet from the server.");
 		//recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
 		Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, NULL,NULL);
-	
 		// should check timeout
 		///////////////////
-	
 		printMessage(recv_msg);
+
 		if(isTypeOf(recv_msg, HD_INIT_SERV) < 0){
 			err_msg("Different protocol type.");
 		}
