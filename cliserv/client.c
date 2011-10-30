@@ -220,9 +220,6 @@ int main(int argc, char **argv){
 			err_msg("Different protocol type.");
 		}
 	} while(isTypeOf(recv_msg, HD_INIT_SERV) < 0);
-	send_msg = messageFactory(HD_INIT_ACK, "I'm ready!"); // send ack to the server
-	send_msg.seq=recv_msg.seq;
-	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 	
 	//change socket number and make another connection.
 	servaddr.sin_port = htons(getIntMsg(recv_msg));
@@ -231,6 +228,10 @@ int main(int argc, char **argv){
 		printf("connect failed! Errno = %d\n", errno);
 		exit(1);
 	}
+	
+	send_msg = messageFactory(HD_INIT_ACK, "I'm ready!"); // send ack to the server
+	send_msg.seq=recv_msg.seq;
+	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
 	err_msg("Reconnect:");
 	err_msg("IP Address : %s",Inet_ntop(AF_INET, &servaddr.sin_addr, str, sizeof(str)));
