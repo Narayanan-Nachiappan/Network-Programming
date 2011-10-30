@@ -5,8 +5,6 @@
 
 void send_cli(FILE*, int, const SA*, socklen_t);
 
-static struct queueNode *headPtr, *tailPtr;
-
 int main(int argc, char **argv){
 	Fputs("CSE 533 : Network Programming\n",stdout);
 	err_msg("Amelia Ellison - 107838108");
@@ -237,7 +235,7 @@ int main(int argc, char **argv){
 	err_msg("IP Address : %s",Inet_ntop(AF_INET, &servaddr.sin_addr, str, sizeof(str)));
 	err_msg("Well-known port number : %d", servaddr.sin_port);
 
-	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size), headPtr, tailPtr);
+	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
 
 	exit(0);
 }

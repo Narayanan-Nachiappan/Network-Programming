@@ -10,7 +10,7 @@
 struct queueNode{
 	char data[MAXLINE];
 	struct queueNode *nextPtr;
-};
+} *headPtr, *tailPtr ;
 
 static struct message {
   uint32_t	seq;	/* sequence # */
@@ -21,15 +21,17 @@ static struct message {
   
 } send_msg, recv_msg;
 
-void printQueue(struct queueNode *headPtr){
-	err_msg("%s", headPtr->data);
-	while(headPtr != NULL){
-		err_msg("%s", headPtr->data);
-		headPtr = headPtr->nextPtr;
+void printQueue(){
+	err_msg("----------------------------------------");
+	err_msg("* Printing Queue");
+	struct queueNode *tempPtr = headPtr;
+	while(tempPtr != NULL){
+		err_msg("%s", tempPtr->data);
+		tempPtr = tempPtr->nextPtr;
 	}
 }
 
-void enqueue(struct queueNode *headPtr, struct queueNode *tailPtr, char *dataLine){
+void enqueue(char *dataLine){
 	struct queueNode *newPtr;
 	newPtr = (struct queueNode*)malloc( sizeof(struct queueNode) );
 	
@@ -38,11 +40,11 @@ void enqueue(struct queueNode *headPtr, struct queueNode *tailPtr, char *dataLin
 		newPtr->nextPtr = NULL;
 
 		if(headPtr == NULL) {
-			printf("haha4\n");
 			headPtr = newPtr;
 		} else {
 			tailPtr->nextPtr = newPtr;
-			printf("haha5\n");
+			//if(headPtr->nextPtr == NULL)
+				//headPtr->nextPtr = newPtr;
 		}
 		tailPtr = newPtr;
 	} else {
@@ -50,15 +52,19 @@ void enqueue(struct queueNode *headPtr, struct queueNode *tailPtr, char *dataLin
 	}
 }
 
-void dequeue(struct queueNode *headPtr, struct queueNode *tailPtr){
+void dequeue(){
 	char value[MAXLINE];
-	struct queueNode tempPtr;
-	strcpy(value, (char *)(*headPtr->data));
-	tempPtr = *headPtr;
-	*headPtr->nextPtr = *headPtr->nextPtr->nextPtr;
+	struct queueNode *tempPtr;
+	strcpy(value, (char *)(headPtr->data));
+	tempPtr = headPtr;
+	headPtr = headPtr->nextPtr;
 	if(headPtr == NULL){
 		tailPtr = NULL;
 	}
+	free(tempPtr);
+	err_msg("----------------------------------------");
+	err_msg("* Dequeue");
+	err_msg("Message: ", value);
 }
 
 struct message messageFactory(int protocol, char *msg){
@@ -86,7 +92,7 @@ int isTypeOf(struct message msg, int protocol){
 	else return -1;
 }
 
-void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize, struct queueNode *headPtr, struct queueNode *tailPtr){
+void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize){
 	int n;
 	socklen_t len;
 	int i=1;
@@ -98,11 +104,18 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
 	while (n>0) {
 		printf("haha\n");
-		//enqueue(headPtr, tailPtr, recv_msg.data);
-		printf("hoho\n");
+		
+		enqueue(recv_msg.data);
 
+		if(headPtr == NULL){
+			printf("NULL!");
+		} else
+		printf("data (outside)? : %s", headPtr->data);
+		
+		
 		printMessage(recv_msg);
-		//printQueue(headPtr);
+		
+		printQueue();
 
 		if (rttinit == 0) {
 		rtt_init(&rttinfo);		/* first time we're called */
