@@ -8,6 +8,8 @@
 #define HD_INIT_ACK		5 // The client sends a acknolodge to the server for the init connection
 #define HD_EOF_FILE		6 // The server indicates client the EOF
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 struct queueNode{
 	char data[MAXLINE];
 	struct queueNode *nextPtr;
@@ -33,6 +35,8 @@ void printQueue(){
 }
 
 void enqueue(char *dataLine){
+	Pthread_mutex_lock(&mutex);
+	
 	struct queueNode *newPtr;
 	newPtr = (struct queueNode*)malloc( sizeof(struct queueNode) );
 	
@@ -48,9 +52,13 @@ void enqueue(char *dataLine){
 	} else {
 		err_msg("No memory available");
 	}
+	
+	Pthread_mutex_unlock(&mutex);
 }
 
 void dequeue(){
+	Pthread_mutex_lock(&mutex);
+	
 	char value[MAXLINE];
 	struct queueNode *tempPtr;
 	strcpy(value, (char *)(headPtr->data));
@@ -60,9 +68,12 @@ void dequeue(){
 		tailPtr = NULL;
 	}
 	free(tempPtr);
+	
 	err_msg("----------------------------------------");
 	err_msg("* Dequeue");
-	err_msg("Message: ", value);
+	err_msg("Message: %s", value);
+
+	Pthread_mutex_unlock(&mutex);
 }
 
 struct message messageFactory(int protocol, char *msg){
@@ -103,7 +114,7 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 	while (n>0) {
 		enqueue(recv_msg.data);
 		
-		printMessage(recv_msg);
+		//printMessage(recv_msg);
 		//printQueue();
 
 		if (rttinit == 0) {
@@ -173,11 +184,20 @@ int isLocalNetwork(char *cli_addr, char *serv_addr, char *mask_addr){
 
 void *printBuffer(){ // thread that dequeues and prints recv_buffer
 	
-	printf("Thread Test");
+	while(1){
+		//printf("\nThread Test\n");
+		if(headPtr != NULL){
+			dequeue();
+		}// else {
+			//printf("Thread Test - queue is empty ");
+		//}
+		//sleep(10);
+	}
+
 }
 
-int expo(int seed, int miu){
-	//int result = -1 * ln(random(seed)) * miu;
+int expo(){
+	//int result = -1 * ln(sran(seed)) * miu;
 	//return result;
 	return 0;
 }
