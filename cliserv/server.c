@@ -63,27 +63,30 @@ int main(int argc, char **argv)
 		sa = (struct sockaddr_in *) ifi->ifi_addr;
 		sa->sin_family = AF_INET;
 		sa->sin_port = htons(servport);
-		bind(socklist[i], (struct sockaddr *) sa, sizeof(*sa));
-		
-		//Store information in customized structure
-		infolist[i].sockfd = socklist[i];
-		infolist[i].bound_addr = ifi->ifi_addr;
-		infolist[i].netmask_addr = ifi->ifi_ntmaddr;
-		infolist[i].subnet_addr = malloc(sizeof(struct sockaddr));
-		
-		//Subnet = Address & Netmask
-		for(j = 0; j < 14; j++)
+		if(bind(socklist[i], (struct sockaddr *) sa, sizeof(*sa)) < 0)
+			printf("bind failed, error %d %s\n", errno, strerror(errno));
+		else
 		{
-			infolist[i].subnet_addr->sa_data[j] = ifi->ifi_addr->sa_data[j] & ifi->ifi_ntmaddr->sa_data[j];
+			//Store information in customized structure
+			infolist[i].sockfd = socklist[i];
+			infolist[i].bound_addr = ifi->ifi_addr;
+			infolist[i].netmask_addr = ifi->ifi_ntmaddr;
+			infolist[i].subnet_addr = malloc(sizeof(struct sockaddr));
+			
+			//Subnet = Address & Netmask
+			for(j = 0; j < 14; j++)
+			{
+				infolist[i].subnet_addr->sa_data[j] = ifi->ifi_addr->sa_data[j] & ifi->ifi_ntmaddr->sa_data[j];
+			}
+			
+			//Print IP, netmask, and subnet
+			printf("bound : \n");		
+			printf("  IP address: %s\n", Sock_ntop_host(infolist[i].bound_addr, sizeof(*infolist[i].bound_addr)));
+			printf("  Netmask address: %s\n", Sock_ntop_host(infolist[i].netmask_addr, sizeof(*infolist[i].netmask_addr)));
+			printf("  Subnet address: %s\n\n", Sock_ntop_host(infolist[i].subnet_addr, sizeof(*infolist[i].subnet_addr)));
+			
+			numsocks = i + 1;
 		}
-		
-		//Print IP, netmask, and subnet
-		printf("bound : \n");		
-		printf("  IP address: %s\n", Sock_ntop_host(infolist[i].bound_addr, sizeof(*infolist[i].bound_addr)));
-		printf("  Netmask address: %s\n", Sock_ntop_host(infolist[i].netmask_addr, sizeof(*infolist[i].netmask_addr)));
-		printf("  Subnet address: %s\n\n", Sock_ntop_host(infolist[i].subnet_addr, sizeof(*infolist[i].subnet_addr)));
-		
-		numsocks = i + 1;
 		//print_ifi(ifi);
 	}
 	
@@ -91,13 +94,12 @@ int main(int argc, char **argv)
 
 	//Set up SIGCHLD handler
 	signal(SIGCHLD, sig_chld);
-	
-	FD_ZERO(&rset);
 		
 	//Set up infinite loop for handling incoming connections
 	//printf("Infinite loop\n");
 	for ( ; ; ) 
 	{
+		FD_ZERO(&rset);
 		//Set up file descriptors for select()
 		for(i = 0; i < numsocks; i++)
 		{
@@ -112,10 +114,11 @@ int main(int argc, char **argv)
 		}
 		
 		maxfdp1 = currentmax + 1;
-		printf("maxfdp1 = %d\n", maxfdp1);
+		//printf("maxfdp1 = %d\n", maxfdp1);
 		
-		printf("select\n");
-		select(maxfdp1, &rset, NULL, NULL, NULL);
+		//printf("select\n");
+		if(select(maxfdp1, &rset, NULL, NULL, NULL) < 0)
+			printf("select error %d %s\n", errno, strerror(errno));
 		
 		//Handle a connection request on sockets that are ready
 		printf("selected\n");
