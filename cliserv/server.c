@@ -203,11 +203,11 @@ int main(int argc, char **argv)
 					
 					//Connect to connection socket
 					printf("Ephemeral Port: %d\n", servaddr->sin_port);
-										
-					cliaddr2 = cliaddr;
-					cliaddr2.sin_port = servaddr->sin_port;
-					clilen2 = sizeof(cliaddr2);
-					if(connect(connsock, (struct sockaddr *) &cliaddr2, clilen2) < 0)
+					printf("Connect:");
+					printf("IP Address : %s\n",Inet_ntop(AF_INET, &cliaddr.sin_addr, rcvline, sizeof(rcvline)));
+					printf("Well-known port number : %d\n", cliaddr.sin_port);
+					
+					if(connect(connsock, (struct sockaddr *) &cliaddr, clilen) < 0)
 					{
 						printf("connect connsock error, %d\n", errno);
 						exit(1);
@@ -228,10 +228,9 @@ int main(int argc, char **argv)
 					//dg_send_recv(socklist[i], portnum, strlen(portnum), 0, (struct sockaddr *)&cliaddr, clilen, 2);
 					//**************************NANA! Am I using this correctly? I'm sending the port number as a string
 					//dg_sendrecv(socklist[i], msgrecv, 0 sendline, strlen(sendline), (struct sockaddr *) &cliaddr, clilen);					
-					//close(socklist[i]);
 					
-					//Start file transfer
-					//*************************NANA! This is where the file transfer starts
+					close(socklist[i]);
+					
 					strncpy(filename, recv_msg.data, strlen(recv_msg.data));
 					printf("Sending file: %s\n", filename);
 					
@@ -244,17 +243,21 @@ int main(int argc, char **argv)
 					}
 
 					printf("Reconnect:");
-					printf("IP Address : %s\n",Inet_ntop(AF_INET, &cliaddr2.sin_addr, rcvline, sizeof(rcvline)));
-					printf("Well-known port number : %d\n", cliaddr2.sin_port);
+					printf("IP Address : %s\n",Inet_ntop(AF_INET, &cliaddr.sin_addr, rcvline, sizeof(rcvline)));
+					printf("Well-known port number : %d\n", cliaddr.sin_port);
+					
+
+					dg_echofun(fp, connsock, (struct sockaddr *)&cliaddr, clilen);
+					
+					//dg_echofun(fp, socklist[i], (struct sockaddr *)&cliaddr, clilen);
+					/*
 					if(send(connsock, filename, strlen(filename), 0) < 0)
 					{
 						printf("send error %d\n", errno);
-					}
+					}*/
 					//sendto(connsock, filename, strlen(filename), 0, (struct sockaddr *)&cliaddr2, clilen2);
-					sendto(socklist[i], filename, strlen(filename), 0, (struct sockaddr *)&cliaddr, clilen);
+					//sendto(socklist[i], filename, strlen(filename), 0, (struct sockaddr *)&cliaddr, clilen);
 					//send(socklist[i], filename, strlen(filename), 0);
-					//dg_echofun(fp, connsock, (struct sockaddr *)&cliaddr2, clilen2);
-					//dg_echofun(fp, socklist[i], (struct sockaddr *)&cliaddr, clilen);
 					
 					exit(0);
 				}

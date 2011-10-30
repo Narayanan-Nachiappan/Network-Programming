@@ -225,8 +225,7 @@ int main(int argc, char **argv){
 		//send_msg = messageFactory(HD_INIT_ACK, "I'm ready!"); // send ack to the server
 		//Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
-		//servaddr.sin_port = htons(getIntMsg(recv_msg));
-		//servaddr.sin_port = getIntMsg(recv_msg);
+		servaddr.sin_port = htons(getIntMsg(recv_msg));
 		
 		if(connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0)
 		{
@@ -239,11 +238,13 @@ int main(int argc, char **argv){
 		err_msg("Well-known port number : %d", servaddr.sin_port);
 		
 		len = sizeof(servaddr);
-		//recv(sockfd, recvline, MAXLINE, 0);
-		recvfrom(sockfd, recvline, MAXLINE, 0, (SA *) &servaddr, &len);
 		printf("%s\n", recvline);
+
+		dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
+		
 		//read(sockfd, recvline, MAXLINE);
-		//dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
+		//recv(sockfd, recvline, MAXLINE, 0);
+		//recvfrom(sockfd, recvline, MAXLINE, 0, (SA *) &servaddr, &len);
 
 	//change socket number and make another connection.
 	//send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));

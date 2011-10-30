@@ -3,9 +3,7 @@
 
 #define HD_INIT_CLI		1 // The client sends a datagram to the server giving the filename for the transfer.
 #define HD_INIT_SERV	2 // The server sends a datagram to the client giving the port number for connection socket.
-#define HD_FILE_SEND	3 // The server sends a packet to the client
-#define HD_INIT_ACK		4 // The client sends a acknolodge to the server for init connection
-#define HD_FILE_ACK		5 // The client sends a acknolodge to the server for data packet
+#define HD_INIT_ACK		3 // The client sends a acknolodge to the server
 
 static struct message {
   uint32_t	seq;	/* sequence # */
@@ -51,37 +49,46 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		len=servlen;
 		fprintf(stderr,"\n window size %d ",windSize);
 		
-		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
-	
-	while (n>0) {
-		recvline[n] = 0;	/* null terminate */
-		//sprintf(outstr,"\nrecv datagram %d from server\n",recv_msg.seq);
-		//Fputs(outstr,stdout);
-		//fflush(stdout);
-		//fprintf(stderr,"\n %s",recv_msg.data);
-		printMessage(recv_msg);
-
-		if (rttinit == 0) {
-			rtt_init(&rttinfo);		/* first time we're called */
-			rttinit = 1;
-			rtt_d_flag = 1;
-		}
-		rtt_newpack(&rttinfo);		/* initialize for this packet */
-		send_msg.ts = rtt_ts(&rttinfo);
+		//n = read(sockfd, (char*)&recv_msg, MAXLINE);
 		
-		sprintf(outstr,"* sending ack for received datagram %d \n",recv_msg.seq);
+		//n = recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, pservaddr, &len);
+		//n = recvfrom(sockfd, (char*)&recv_msg, MAXLINE, 0, NULL, NULL);
+		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
+	while (n>0) {
+		printf("hohoho");
+		recvline[n] = 0;	/* null terminate */
+		sprintf(outstr,"\nrecv datagram %d from server\n",recv_msg.seq);
+		Fputs(outstr,stdout);
+		fflush(stdout);
+		fprintf(stderr,"\n %s",recv_msg.data);
+
+		//fprintf(stderr,"\n %d",recv_msg.seq);
+
+	//	if((recv_msg.seq%2)==0){
+		if (rttinit == 0) {
+		rtt_init(&rttinfo);		/* first time we're called */
+		rttinit = 1;
+		rtt_d_flag = 1;
+	}
+	rtt_newpack(&rttinfo);		/* initialize for this packet */
+	send_msg.ts = rtt_ts(&rttinfo);
+
+
+		sprintf(outstr,"\nsending ack for received datagram %d \n",recv_msg.seq);
 		Fputs(outstr,stdout);
 		send_msg.seq=recv_msg.seq;
-		send_msg.type=HD_FILE_ACK;
 		strcpy(send_msg.data,"ACK");
 		send_msg.wind_size=windSize;
-	
+
 		fflush(stdout);
 		Writen(sockfd, (char *)&send_msg, n);
+	//	}
 
-		n = Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, pservaddr, &len);	
+		n = Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, pservaddr, &len);
+		
 	}
 }
+
 
 // Check if the two addr is in the local network
 int isLocalNetwork(char *cli_addr, char *serv_addr, char *mask_addr){

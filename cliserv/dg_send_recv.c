@@ -56,8 +56,8 @@ sendagain:
 	
 #endif
 	send_msg.ts = rtt_ts(&rttinfo);
-	sendto(fd, (char *) &send_msg, nbytes, 0, destaddr, destlen);
-	//send(fd, (char *) &send_msg, nbytes, 0);
+	//sendto(fd, (char *) &send_msg, nbytes, 0, destaddr, destlen);
+	send(fd, (char *) &send_msg, nbytes, 0);
 
 	alarm(rtt_start(&rttinfo));	/* calc timeout value & start timer */
 #ifdef	RTT_DEBUG
@@ -134,7 +134,7 @@ void dg_echofun(FILE * fp,int sockfd, SA *pcliaddr, socklen_t clilen)
 	fprintf(stderr, "Slow start#### Init wind size %4d ", i);
 	while (Fgets(sendline, MAXLINE, fp) != NULL) {
 		//Fputs(sendline,stdout);
-		fprintf(stderr, "%s", sendline);
+		//fprintf(stderr, "%s", sendline);
 		n = Dg_send_recv(sockfd, sendline, strlen(sendline),
 						 recvline, MAXLINE, pcliaddr, clilen, 0);
 		
