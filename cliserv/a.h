@@ -38,13 +38,10 @@ void enqueue(char *dataLine){
 	if(newPtr != NULL){
 		strcpy(newPtr->data, dataLine);
 		newPtr->nextPtr = NULL;
-
 		if(headPtr == NULL) {
 			headPtr = newPtr;
 		} else {
 			tailPtr->nextPtr = newPtr;
-			//if(headPtr->nextPtr == NULL)
-				//headPtr->nextPtr = newPtr;
 		}
 		tailPtr = newPtr;
 	} else {
@@ -100,22 +97,12 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 	static struct rtt_info   rttinfo;
 	static int	rttinit = 0;
 		len=servlen;
-		fprintf(stderr,"\n window size %d ",windSize);
+		fprintf(stderr,"Window size: %d\n",windSize);
 		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
 	while (n>0) {
-		printf("haha\n");
-		
 		enqueue(recv_msg.data);
-
-		if(headPtr == NULL){
-			printf("NULL!");
-		} else
-		printf("data (outside)? : %s", headPtr->data);
-		
-		
 		printMessage(recv_msg);
-		
-		printQueue();
+		//printQueue();
 
 		if (rttinit == 0) {
 		rtt_init(&rttinfo);		/* first time we're called */
@@ -172,4 +159,8 @@ int isLocalNetwork(char *cli_addr, char *serv_addr, char *mask_addr){
 	snprintf(network_addr_serv, sizeof(network_addr_serv), "%d.%d.%d.%d", atoi(addr9) & atoi(addr5), atoi(addr10) & atoi(addr6), atoi(addr11) & atoi(addr7), atoi(addr12) & atoi(addr8));
 
 	return strcmp(network_addr_cli, network_addr_serv);
+}
+
+void *printBuffer(){ // thread that dequeues and prints recv_buffer
+	printf("Thread Test");
 }

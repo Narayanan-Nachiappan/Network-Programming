@@ -221,19 +221,26 @@ int main(int argc, char **argv){
 	
 	//change socket number and make another connection.
 	servaddr.sin_port = htons(getIntMsg(recv_msg));
-		
+
+	err_msg("----------------------------------------");
+	err_msg("Reconnect:");
+	err_msg("IP Address : %s",Inet_ntop(AF_INET, &servaddr.sin_addr, str, sizeof(str)));
+	err_msg("Well-known port number : %d", servaddr.sin_port);
+	
 	if(connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0){
 		printf("connect failed! Errno = %d\n", errno);
 		exit(1);
 	}
-	
+
+	err_msg("----------------------------------------");
+	err_msg("Send ack to the server for initial connection");
 	send_msg = messageFactory(HD_INIT_ACK, "I'm ready!"); // send ack to the server
 	send_msg.seq=recv_msg.seq;
 	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
-	err_msg("Reconnect:");
-	err_msg("IP Address : %s",Inet_ntop(AF_INET, &servaddr.sin_addr, str, sizeof(str)));
-	err_msg("Well-known port number : %d", servaddr.sin_port);
+	pthread_t tid;
+
+	Pthread_create(&tid, NULL, printBuffer);
 
 	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
 
