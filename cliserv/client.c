@@ -5,6 +5,8 @@
 
 void send_cli(FILE*, int, const SA*, socklen_t);
 
+static struct queueNode *headPtr, *tailPtr;
+
 int main(int argc, char **argv){
 	Fputs("CSE 533 : Network Programming\n",stdout);
 	err_msg("Amelia Ellison - 107838108");
@@ -174,7 +176,6 @@ int main(int argc, char **argv){
 		err_quit("getsockname error %d", errno);
 	}
 	err_msg("IP Client");
-	//err_msg("IP Address : %s", Inet_ntop(AF_INET, &ss_cli.sin_addr, str, sizeof(str)));
 	err_msg("Ephemeral port number assigned : %d", ss_cli.sin_port);
 	
 	err_msg("----------------------------------------");
@@ -206,48 +207,36 @@ int main(int argc, char **argv){
 	send_msg = messageFactory(HD_INIT_CLI, file_name);
 	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 	
-	//////////////////
-	//Read(sockfd, (struct message *)&recv_msg, MAXLINE);
 	do{
 		err_msg("Waiting for initial packet from the server.");
+		//recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
 		Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, NULL,NULL);
-		//Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, (SA *) &servaddr, sizeof(servaddr));
 	
 		// should check timeout
 		///////////////////
 	
-		//n = Recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
 		printMessage(recv_msg);
 		if(isTypeOf(recv_msg, HD_INIT_SERV) < 0){
 			err_msg("Different protocol type.");
 		}
 	} while(isTypeOf(recv_msg, HD_INIT_SERV) < 0);
-		//send_msg = messageFactory(HD_INIT_ACK, "I'm ready!"); // send ack to the server
-		//Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
-
-		servaddr.sin_port = htons(getIntMsg(recv_msg));
-		
-		if(connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0)
-		{
-			printf("connect failed! Errno = %d\n", errno);
-			exit(1);
-		}
-		
-		err_msg("Reconnect:");
-		err_msg("IP Address : %s",Inet_ntop(AF_INET, &servaddr.sin_addr, str, sizeof(str)));
-		err_msg("Well-known port number : %d", servaddr.sin_port);
-		
-		len = sizeof(servaddr);
-		printf("%s\n", recvline);
-
-		dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
-		
-		//read(sockfd, recvline, MAXLINE);
-		//recv(sockfd, recvline, MAXLINE, 0);
-		//recvfrom(sockfd, recvline, MAXLINE, 0, (SA *) &servaddr, &len);
-
+	send_msg = messageFactory(HD_INIT_ACK, "I'm ready!"); // send ack to the server
+	send_msg.seq=recv_msg.seq;
+	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
+	
 	//change socket number and make another connection.
-	//send_cli(stdin, sockfd, (SA *) &servaddr, sizeof(servaddr));
+	servaddr.sin_port = htons(getIntMsg(recv_msg));
+		
+	if(connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0){
+		printf("connect failed! Errno = %d\n", errno);
+		exit(1);
+	}
+
+	err_msg("Reconnect:");
+	err_msg("IP Address : %s",Inet_ntop(AF_INET, &servaddr.sin_addr, str, sizeof(str)));
+	err_msg("Well-known port number : %d", servaddr.sin_port);
+
+	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size), headPtr, tailPtr);
 
 	exit(0);
 }
