@@ -28,13 +28,13 @@ dg_send_recv_int(int fd, const char *outbuff, size_t outbytes,
 //proto = protocol type
 //sendtype = type of send to use (sendto = 0, send = 1)
 ssize_t
-dg_send_recv(int fd, const char *outbuff, size_t outbytes,
+dg_send_recv(int fd, int fd2, const char *outbuff, size_t outbytes,
 			 char *inbuff, size_t inbytes,
 			  SA *destaddr, socklen_t destlen, int proto, int sendtype)
 {
 	ssize_t			n;
 	ssize_t nbytes;
-	int len;
+	int len, sock;
 	struct iovec	iovsend[2], iovrecv[2];
 	
 	if (rttinit == 0) {
@@ -89,7 +89,12 @@ sendagain:
 	}
 
 	do {
-		if(recvfrom(fd, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL) < 0)
+		if(sendtype == 0)
+			sock = fd2;
+		else
+			sock = fd;
+			
+		if(recvfrom(sock, (struct message *)&recv_msg, MAXLINE, 0,  NULL, NULL) < 0)
 			printf("\nrecvfrom error %d %s\n", errno, strerror(errno));
 		//n = recv(fd, (struct message *)&recv_msg, MAXLINE, 0);
 #ifdef	RTT_DEBUG
@@ -119,14 +124,14 @@ sig_alrm(int signo)
 /* end dgsendrecv2 */
 
 ssize_t
-Dg_send_recv(int fd, const char *outbuff, size_t outbytes,
+Dg_send_recv(int fd, int fd2, const char *outbuff, size_t outbytes,
 			 char *inbuff, size_t inbytes,
 			  SA *destaddr, socklen_t destlen, int proto, int sendtype)
 {
 	ssize_t	n;
 
 
-	n = dg_send_recv(fd, outbuff, outbytes, inbuff, inbytes,
+	n = dg_send_recv(fd, fd2, outbuff, outbytes, inbuff, inbytes,
 					 destaddr, destlen, proto, sendtype);
 
 	if (n < 0)
@@ -146,7 +151,7 @@ void dg_echofun(FILE * fp,int sockfd, SA *pcliaddr, socklen_t clilen)
 	while (Fgets(sendline, MAXLINE, fp) != NULL) {
 		//Fputs(sendline,stdout);
 		//fprintf(stderr, "%s", sendline);
-		n = Dg_send_recv(sockfd, sendline, strlen(sendline),
+		n = Dg_send_recv(sockfd, 0, sendline, strlen(sendline),
 						 recvline, MAXLINE, pcliaddr, clilen, 3, 1);
 		
 		recvline[n] = 0;	/* null terminate */
