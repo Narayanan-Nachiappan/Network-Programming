@@ -93,7 +93,6 @@ int main(int argc, char **argv)
 	signal(SIGCHLD, sig_chld);
 	
 	FD_ZERO(&rset);
-	clilen = sizeof(cliaddr);
 		
 	//Set up infinite loop for handling incoming connections
 	//printf("Infinite loop\n");
@@ -144,6 +143,7 @@ int main(int argc, char **argv)
 					//******************NANA! Is there any function that just waits to receive one message and then sends an ack? If so, let me know
 					//and I can change this part to include it
 					//j = recvfrom(socklist[i], filename, MAXLINE, 0, (struct sockaddr *)&cliaddr, &clilen);
+					clilen = sizeof(cliaddr);
 					j = recvfrom(socklist[i], (struct message *)&recv_msg, sizeof(recv_msg), 0,  (struct sockaddr *)&cliaddr, &clilen);
 					if(j == -1)
 					{
@@ -220,12 +220,13 @@ int main(int argc, char **argv)
 					//ssize_t dg_send_recv(int fd, const void *outbuff, size_t outbytes, void *inbuff, size_t inbytes, const SA *destaddr, socklen_t destlen)
 					//sendto(socklist[i], sendline, strlen(sendline), 0, (struct sockaddr *)&cliaddr, clilen);
 					
-					send_msg.type = 2;
 					strcpy(send_msg.data, portnum);
-					sendto(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen);
+					dg_send_recv(socklist[i], portnum, strlen(portnum), NULL, NULL, (struct sockaddr *)&cliaddr, clilen, 2, 0);
 					
-					//dg_send_recv(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen);
-					//dg_send_recv(socklist[i], portnum, strlen(portnum), 0, (struct sockaddr *)&cliaddr, clilen, 2);
+					//send_msg.type = 2;
+					//dg_send_recv(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen, 2, 0);
+					//sendto(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen);
+					//dg_send_recv(int fd, const char *outbuff, size_t outbytes, char *inbuff, size_t inbytes, SA *destaddr, socklen_t destlen, int proto, int sendtype)
 					//**************************NANA! Am I using this correctly? I'm sending the port number as a string
 					//dg_sendrecv(socklist[i], msgrecv, 0 sendline, strlen(sendline), (struct sockaddr *) &cliaddr, clilen);					
 					
