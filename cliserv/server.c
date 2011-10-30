@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 					//sendto(socklist[i], sendline, strlen(sendline), 0, (struct sockaddr *)&cliaddr, clilen);
 					
 					strcpy(send_msg.data, portnum);
-					dg_send_recv(socklist[i], portnum, strlen(portnum), NULL, NULL, (struct sockaddr *)&cliaddr, clilen, 2, 0);
+					dg_send_recv(socklist[i], connsock, portnum, strlen(portnum), NULL, NULL, (struct sockaddr *)&cliaddr, clilen, 2, 0);
 					
 					//send_msg.type = 2;
 					//dg_send_recv(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen, 2, 0);
