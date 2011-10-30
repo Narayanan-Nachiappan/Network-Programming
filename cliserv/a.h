@@ -7,6 +7,11 @@
 #define HD_FILE_ACK		4 // The client sends a acknolodge to the server for the packet
 #define HD_INIT_ACK		5 // The client sends a acknolodge to the server for the init connection
 
+struct queueNode{
+	char data[MAXLINE];
+	struct queueNode *nextPtr;
+};
+
 static struct message {
   uint32_t	seq;	/* sequence # */
   uint32_t	ts;
@@ -15,6 +20,46 @@ static struct message {
   char	data[MAXLINE];		/* timestamp when sent */
   
 } send_msg, recv_msg;
+
+void printQueue(struct queueNode *headPtr){
+	err_msg("%s", headPtr->data);
+	while(headPtr != NULL){
+		err_msg("%s", headPtr->data);
+		headPtr = headPtr->nextPtr;
+	}
+}
+
+void enqueue(struct queueNode *headPtr, struct queueNode *tailPtr, char *dataLine){
+	struct queueNode *newPtr;
+	newPtr = (struct queueNode*)malloc( sizeof(struct queueNode) );
+	
+	if(newPtr != NULL){
+		strcpy(newPtr->data, dataLine);
+		newPtr->nextPtr = NULL;
+
+		if(headPtr == NULL) {
+			printf("haha4\n");
+			headPtr = newPtr;
+		} else {
+			tailPtr->nextPtr = newPtr;
+			printf("haha5\n");
+		}
+		tailPtr = newPtr;
+	} else {
+		err_msg("No memory available");
+	}
+}
+
+void dequeue(struct queueNode *headPtr, struct queueNode *tailPtr){
+	char value[MAXLINE];
+	struct queueNode tempPtr;
+	strcpy(value, (char *)(*headPtr->data));
+	tempPtr = *headPtr;
+	*headPtr->nextPtr = *headPtr->nextPtr->nextPtr;
+	if(headPtr == NULL){
+		tailPtr = NULL;
+	}
+}
 
 struct message messageFactory(int protocol, char *msg){
 	struct message packet;
@@ -41,7 +86,7 @@ int isTypeOf(struct message msg, int protocol){
 	else return -1;
 }
 
-void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize){
+void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize, struct queueNode *headPtr, struct queueNode *tailPtr){
 	int n;
 	socklen_t len;
 	int i=1;
@@ -52,8 +97,13 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		fprintf(stderr,"\n window size %d ",windSize);
 		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
 	while (n>0) {
+		printf("haha\n");
+		//enqueue(headPtr, tailPtr, recv_msg.data);
+		printf("hoho\n");
+
 		printMessage(recv_msg);
-		
+		//printQueue(headPtr);
+
 		if (rttinit == 0) {
 		rtt_init(&rttinfo);		/* first time we're called */
 		rttinit = 1;
@@ -62,7 +112,7 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 	rtt_newpack(&rttinfo);		/* initialize for this packet */
 	send_msg.ts = rtt_ts(&rttinfo);
 
-	sprintf(outstr,"sending ack for received datagram %d \n",recv_msg.seq);
+	sprintf(outstr,"* sending ack for received datagram %d \n",recv_msg.seq);
 	Fputs(outstr,stdout);
 	send_msg.seq=recv_msg.seq;
 	send_msg.type = HD_FILE_ACK;
