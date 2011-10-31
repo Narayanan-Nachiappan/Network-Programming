@@ -268,15 +268,18 @@ sendagain:
 	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
 	pthread_t tid;
-	Pthread_create(&tid, NULL, printBuffer);
+	Pthread_create(&tid, NULL, printBuffer, atoi(mean));
 
 	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
+	
+	while(headPtr != NULL){
+		err_msg("Wait until recv_buff gets empty");
+		sleep(1);
+	}
 
 	exit(0);
 }
 
-static void
-sig_alrm(int signo)
-{
+static void sig_alrm(int signo){
 	siglongjmp(jmpbuf, 1);
 }

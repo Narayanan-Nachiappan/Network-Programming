@@ -1,4 +1,5 @@
-#include	<string.h>
+#include <string.h>
+#include <math.h>
 #include "unprtt.h"
 
 #define HD_INIT_CLI		1 // The client sends a datagram to the server giving the filename for the transfer.
@@ -7,6 +8,8 @@
 #define HD_FILE_ACK		4 // The client sends a acknolodge to the server for the packet
 #define HD_INIT_ACK		5 // The client sends a acknolodge to the server for the init connection
 #define HD_EOF_FILE		6 // The server indicates client the EOF
+
+fd_set rset;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -131,10 +134,25 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		Writen(sockfd, (char *)&send_msg, n);
 
 		if(recv_msg.type == HD_EOF_FILE){
-			err_msg("EOF");
-			err_msg("Client in TIME_WAIT status");
+			fprintf(stderr,"EOF\n");
+			fprintf(stderr,"Client in TIME_WAIT status\n");
+			fprintf(stderr,"WAITING FOR 2*RTO\n");
+			struct timeval tv;
+	
+		tv.tv_sec=5;
+			tv.tv_usec=0;
+			FD_ZERO(&rset);
+			FD_SET(sockfd, &rset);
+			Select(sockfd+1, &rset, NULL, NULL, &tv);
+				if (FD_ISSET(sockfd, &rset)) {	/* Resend ack */
+					err_msg("Resending ack to server for the last packet");
+					Writen(sockfd, (char *)&send_msg, n);
+					}
+				else{
+					err_msg("TIME_WAIT is done. Client terminating");
+					}
 			break;
-		} else if(recv_msg.type == HD_FILE){
+		}  else if(recv_msg.type == HD_FILE){
 			n = Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, pservaddr, &len);	
 		} else if(recv_msg.type == 0){
 			err_msg("Wrong protocol");
@@ -177,22 +195,18 @@ int isLocalNetwork(char *cli_addr, char *serv_addr, char *mask_addr){
 	return strcmp(network_addr_cli, network_addr_serv);
 }
 
-void *printBuffer(){ // thread that dequeues and prints recv_buffer
-	
+void *printBuffer(int miu){ // thread that dequeues and prints recv_buffer
 	while(1){
-		//printf("\nThread Test\n");
-		while(headPtr != NULL){
-			dequeue();
-		}// else {
-			//printf("Thread Test - queue is empty ");
-		//}
-		//sleep(10);
+		sleep((int)(expo(miu) * 0.01));
+		while(headPtr != NULL) dequeue();
 	}
-
 }
 
-int expo(){
-	//int result = -1 * ln(sran(seed)) * miu;
-	//return result;
-	return 0;
+int expo(int miu){
+	float random = ((rand() % 100) +1) * 0.01;
+	int result = (-1 * log(random)) * miu;
+	//err_msg("pthread: sleep for %d millisecond", result);
+	return result;
 }
+
+
