@@ -57,6 +57,9 @@ void enqueue(char *dataLine){
 }
 
 void dequeue(){
+	err_msg("----------------------------------------");
+	err_msg("* Dequeue");
+
 	Pthread_mutex_lock(&mutex);
 	
 	char value[MAXLINE];
@@ -68,12 +71,10 @@ void dequeue(){
 		tailPtr = NULL;
 	}
 	free(tempPtr);
-	
-	err_msg("----------------------------------------");
-	err_msg("* Dequeue");
-	err_msg("Message: %s", value);
 
 	Pthread_mutex_unlock(&mutex);
+
+	err_msg("Message: %s", value);
 }
 
 struct message messageFactory(int protocol, char *msg){
@@ -96,11 +97,6 @@ void printMessage(struct message msg){
 	err_msg("Message: %s", msg.data);
 }
 
-int isTypeOf(struct message msg, int protocol){
-	if (msg.type == protocol) return 1;
-	else return -1;
-}
-
 void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize){
 	int n;
 	socklen_t len;
@@ -113,7 +109,6 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
 	while (n>0) {
 		enqueue(recv_msg.data);
-		
 		//printMessage(recv_msg);
 		//printQueue();
 
@@ -186,7 +181,7 @@ void *printBuffer(){ // thread that dequeues and prints recv_buffer
 	
 	while(1){
 		//printf("\nThread Test\n");
-		if(headPtr != NULL){
+		while(headPtr != NULL){
 			dequeue();
 		}// else {
 			//printf("Thread Test - queue is empty ");

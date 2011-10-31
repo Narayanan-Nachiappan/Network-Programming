@@ -1,9 +1,16 @@
 #include "unpifiplus.h"
 #include "a.h"
+#include "unprtt.h"
+#include "setjmp.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 void send_cli(FILE*, int, const SA*, socklen_t);
+static void sig_alrm(int);
+
+static struct rtt_info rttinfo;
+static sigjmp_buf jmpbuf;
+static int rttinit = 0;
 
 int main(int argc, char **argv){
 	Fputs("CSE 533 : Network Programming\n",stdout);
@@ -202,22 +209,45 @@ int main(int argc, char **argv){
 	err_msg("Initializing connection.");
 	err_msg("Filename : %s", file_name);
 	
-	send_msg = messageFactory(HD_INIT_CLI, file_name);
-	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
-	
-	do{
-		err_msg("Waiting for initial packet from the server.");
-		//recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
-		Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, NULL,NULL);
-		// should check timeout
-		///////////////////
-		printMessage(recv_msg);
+	Signal(SIGALRM, sig_alrm);
+	rtt_newpack(&rttinfo); /* initialize for this packet */
 
-		if(isTypeOf(recv_msg, HD_INIT_SERV) < 0){
-			err_msg("Different protocol type.");
+	if (rttinit == 0) {
+		rtt_init(&rttinfo); /* first time we're called */
+		rttinit = 1;
+		rtt_d_flag = 1;
+	}
+	send_msg = messageFactory(HD_INIT_CLI, file_name);
+	send_msg.ts = rtt_ts(&rttinfo);
+
+sendagain:
+	err_msg("Client: send file name");
+	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
+	alarm(rtt_start(&rttinfo));
+
+	if (sigsetjmp(jmpbuf, 1) != 0) {
+		if (rtt_timeout(&rttinfo) < 0) {
+			err_msg("Client: no response from server. terminates.");
+			rttinit = 0; /* reinit in case we're called again */
+			errno = ETIMEDOUT;
+			return(-1);
 		}
-	} while(isTypeOf(recv_msg, HD_INIT_SERV) < 0);
+		#ifdef RTT_DEBUG
+			err_msg("client: timeout, retransmitting");
+		#endif
+		goto sendagain;
+	}
+		do{
+			err_msg("Waiting for initial packet from the server.");
+			Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, NULL,NULL);
+			printMessage(recv_msg);
+
+			if(recv_msg.type != HD_INIT_SERV){
+				err_msg("Different protocol type.");
+			}
+		} while(recv_msg.type != HD_INIT_SERV);
 	
+		alarm(0);
 	//change socket number and make another connection.
 	servaddr.sin_port = htons(getIntMsg(recv_msg));
 
@@ -238,10 +268,15 @@ int main(int argc, char **argv){
 	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
 	pthread_t tid;
-
 	Pthread_create(&tid, NULL, printBuffer);
 
 	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
 
 	exit(0);
+}
+
+static void
+sig_alrm(int signo)
+{
+	siglongjmp(jmpbuf, 1);
 }
