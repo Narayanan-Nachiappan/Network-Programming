@@ -270,7 +270,7 @@ sendagain:
 	pthread_t tid;
 	Pthread_create(&tid, NULL, printBuffer, atoi(mean));
 
-	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size));
+	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size), atof(loss), atoi(seed));
 	
 	while(headPtr != NULL){
 		err_msg("Wait until recv_buff gets empty");

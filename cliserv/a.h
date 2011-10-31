@@ -100,7 +100,7 @@ void printMessage(struct message msg){
 	err_msg("Message: %s", msg.data);
 }
 
-void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize){
+void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize, float loss, int seed){
 	int n;
 	socklen_t len;
 	int i=1;
@@ -110,7 +110,18 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		len=servlen;
 		fprintf(stderr,"Window size: %d\n",windSize);
 		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
+		
+		srand(seed);
+		
 	while (n>0) {
+		float random = ((rand() % 101)) * 0.01;
+		err_msg("loss probability = %lf", loss);
+		err_msg("random = %lf", random);
+
+		if (random < loss){
+			err_msg("drop the message");
+			continue;
+		}
 		enqueue(recv_msg.data);
 		//printMessage(recv_msg);
 		//printQueue();
