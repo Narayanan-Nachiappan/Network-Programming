@@ -12,7 +12,7 @@ Group# 15
 cse533_group15_assignment2.tar
 
 ----------------------------------------
-2. Srouse files
+2. Source files
 
 /* include helper functions and definitions of protocol */
 a.h
@@ -61,10 +61,35 @@ unprtt.h
 
 ----------------------------------------
 
+Server Overview
+The server works by waiting for a client to connect to one of its interfaces. The client and server share a
+special protocol, so if the message received on the socket does not have the proper protocol number, the 
+server will ignore the client. When the server recieves a valid packet, it forks a child process to continue
+handle the client. The server checks to see if the client is local, and if it is, it uses SO_DONTROUTE. The
+server creates a new socket and sends the client the port it should connect to, and then sends the client
+the file it requested on that socket.
+----------------------------------------
+
 Report, in a ReadMe file which you hand in with your code,
  on the modifications you had to introduce to ensure that only unicast addresses are bound,
  and on your implementation of the array of structures described above.
 
+Using the Get_ifi_info_plus function, we were able to bind on all unicast addresses. In order to bind on
+broadcast address, we would have needed to add IFF_BROADCAST to ifi_flags and to bind on wildcard addresses
+we would have needed to use a struck sockaddr_in with it's saddr value set to INADDR_ANY. By not performing
+these actions, we only bound on the unicast addresses.
+
+Here is the custom structure used to retain socket information:
+struct sock_info 
+{
+	int	sockfd; //socket descriptor
+	struct sockaddr  *bound_addr; //bound address
+	struct sockaddr  *netmask_addr; //netmask address
+	struct sockaddr  *subnet_addr;	//subnet address	
+};
+
+These structures were kept in an array called 'infolist'.
+ 
 
 ----------------------------------------
 
@@ -84,5 +109,10 @@ In the ReadMe file you hand in,
  report on how you dealt with the issues raised here:
  sender notifying receiver of the last datagram, clean closing, and so on.
 
+When the sender reads the EOF character, it uses the HD_EOF_FILE number for the packet's protocol. It then continues 
+to wait for acknowledgements from the client until it either receives an ACK for the EOF packet or reaches it's maximum
+retransmission value for the EOF packet. The server child then closes the sockets and exits, and the SIGCHLD signal is handled 
+by waitpid in the sigchld handler. When the client receives the EOF packet, it does a TIME_WAIT. At the end of the TIME_WAIT, the
+communication ends.
 
 

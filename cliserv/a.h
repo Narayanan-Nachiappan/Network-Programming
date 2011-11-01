@@ -2,11 +2,11 @@
 #include <math.h>
 #include "unprtt.h"
 
-#define HD_INIT_CLI		1 // The client sends a datagram to the server giving the filename for the transfer.
-#define HD_INIT_SERV	2 // The server sends a datagram to the client giving the port number for connection socket.
-#define HD_FILE			3 // The server sends a packet to the client .
-#define HD_FILE_ACK		4 // The client sends a acknolodge to the server for the packet
-#define HD_INIT_ACK		5 // The client sends a acknolodge to the server for the init connection
+#define HD_INIT_CLI		1 // The client sends a datagram to the server giving the filename for the transfer
+#define HD_INIT_SERV	2 // The server sends a datagram to the client giving the port number for connection socket
+#define HD_FILE			3 // The server sends a packet to the client
+#define HD_FILE_ACK		4 // The client sends an acknowledgement to the server for the packet
+#define HD_INIT_ACK		5 // The client sends an acknowledgement to the server for the init connection
 #define HD_EOF_FILE		6 // The server indicates client the EOF
 
 fd_set rset;
