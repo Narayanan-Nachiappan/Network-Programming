@@ -4,11 +4,6 @@
 #include "unpifiplus.h"
 
 void sig_chld(int signo);
-void mydg_echo(int sockfd, struct sockaddr *pcliaddr, socklen_t clilen, struct sockaddr * myaddr);
-void print_ifi(struct ifi_info	*ifi);
-//void dg_echofun(FILE * fp,int sockfd, const SA *pcliaddr, socklen_t clilen);
-//void dg_echofun(FILE * fp,int sockfd, const SA *pcliaddr, socklen_t clilen);
-//ssize_t dg_send_recv(int fd, const void *outbuff, size_t outbytes, void *inbuff, size_t inbytes, const SA *destaddr, socklen_t destlen)
 
 //Custom structure
 struct sock_info 
@@ -31,7 +26,6 @@ int main(int argc, char **argv)
 	struct ifi_info		*ifi, *ifihead;
 	socklen_t 			clilen, clilen2, servlen;
 	struct sockaddr_in	*sa, cliaddr, cliaddr2, *servaddr;
-	struct sockaddr 	*rcv;
 	fd_set 				rset;
 	char				filename[MAXLINE], rcvline[MAXLINE], sendline[MAXLINE], portnum[10], address[16];
 
@@ -53,22 +47,23 @@ int main(int argc, char **argv)
 	else
 		printf("ARQ Type: Selective ARQ\n");
 	
-	//Bind unicast address 
+	//bind all unicast addresses 
 	for (i = 0, ifihead = ifi = Get_ifi_info_plus(AF_INET, 1); ifi != NULL && i < MAXSOCKS; ifi = ifi->ifi_next, i++) 
 	{
 		socklist[i] = socket(AF_INET, SOCK_DGRAM, 0);
 		setsockopt(socklist[i], SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 		
-		/*
 		if((flags = fcntl(socklist[i], F_GETFL, 0)) < 0)
 		printf("F_GETFL Error socklist[%d]\n", i);
 		flags |= O_NONBLOCK;
 		if(fcntl(socklist[i], F_SETFL, flags) < 0)
-		printf("F_SETFL Error socklist[%d]\n", i);*/
+		printf("F_SETFL Error socklist[%d]\n", i);
 
 		sa = (struct sockaddr_in *) ifi->ifi_addr;
 		sa->sin_family = AF_INET;
 		sa->sin_port = htons(servport);
+		
+		//bind on the sockets
 		if(bind(socklist[i], (struct sockaddr *) sa, sizeof(*sa)) < 0)
 			printf("bind failed, error %d %s\n", errno, strerror(errno));
 		else
@@ -93,7 +88,6 @@ int main(int argc, char **argv)
 			
 			numsocks = i + 1;
 		}
-		//print_ifi(ifi);
 	}
 	
 	printf("Found %d interfaces\n", numsocks);
@@ -102,27 +96,23 @@ int main(int argc, char **argv)
 	signal(SIGCHLD, sig_chld);
 		
 	//Set up infinite loop for handling incoming connections
-	//printf("Infinite loop\n");
 	for ( ; ; ) 
 	{
-		FD_ZERO(&rset);
 		//Set up file descriptors for select()
+		FD_ZERO(&rset);
 		for(i = 0; i < numsocks; i++)
 		{
 			FD_SET(socklist[i], &rset);
 		}
-		//printf("FD_SET\n");
+
 		currentmax = 0;
 		for(i = 0; i < numsocks; i++)
 		{
 				currentmax = max(currentmax, socklist[i]);
-				//printf("currentmax = %d\n", currentmax);
 		}
 		
 		maxfdp1 = currentmax + 1;
-		//printf("maxfdp1 = %d\n", maxfdp1);
-		
-		//printf("select\n");
+
 		if(select(maxfdp1, &rset, NULL, NULL, NULL) < 0)
 		{
 			if(errno != 4)
@@ -130,34 +120,24 @@ int main(int argc, char **argv)
 		}
 		
 		//Handle a connection request on sockets that are ready
-		printf("selected\n");
 		for(i = 0; i < numsocks; i++)
 		{
 			if(FD_ISSET(socklist[i], &rset))
 			{
 				//Fork child to handle client
-				printf("Socket %d ready\n", i);
 				//Get filename from client
 				clilen = sizeof(cliaddr);
 				j = recvfrom(socklist[i], (struct message *)&recv_msg, sizeof(recv_msg), 0,  (struct sockaddr *)&cliaddr, &clilen);
 				inet_ntop(AF_INET, &cliaddr.sin_addr, address, clilen);
 				
+				//if it's a valid request, fork a child. Otherwise, continue checking
 				if(j == -1)
-				{
-					//printf("recvfrom error %d, exiting\n", errno); //recvfrom error
-					//exit(1);
 					continue;
-				}
 				if(recv_msg.type == 1)
-				{
 					printf("Received from %s, filename is %s, received %d bytes\n", address,  recv_msg.data, j);
-				}
 				else 
-				{
-					//printf("Invalid message\n");
-					//exit(1);
 					continue;
-				}
+				
 				if ((pid = Fork()) == 0) 
 				{	
 					//Close all other sockets
@@ -171,27 +151,9 @@ int main(int argc, char **argv)
 						close(socklist[j]);
 					}
 					
-					//Get filename from client
-					//printf("Recvfrom\n");
-					//******************NANA! Is there any function that just waits to receive one message and then sends an ack? If so, let me know
-					//and I can change this part to include it
-					//j = recvfrom(socklist[i], filename, MAXLINE, 0, (struct sockaddr *)&cliaddr, &clilen);
-					/*
-					clilen = sizeof(cliaddr);
-					j = recvfrom(socklist[i], (struct message *)&recv_msg, sizeof(recv_msg), 0,  (struct sockaddr *)&cliaddr, &clilen);
-					if(j == -1)
-					{
-						printf("recvfrom error %d\n, exiting", errno); //recvfrom error
-						exit(1);
-					}*/
-					
-					//strcpy(address, );
-					//rcv = (struct sockaddr *) cliaddr;
-					inet_ntop(AF_INET, &cliaddr.sin_addr, address, clilen);
-					//printf("Received from %s, filename is %s, received %d bytes\n", address,  recv_msg.data, j);
-					//printf("Received from %s, filename is %s, received %d bytes\n", address,  filename, j);
-					
 					//test to see if the client is local
+					inet_ntop(AF_INET, &cliaddr.sin_addr, address, clilen);			
+					
 					if(strcmp(address, "127.0.0.1") == 0) //don't test for localhost
 					{
 						printf("Client is LOCAL (loopback address)\n");
@@ -219,7 +181,7 @@ int main(int argc, char **argv)
 					servaddr->sin_port       = htons(0);
 					
 					//Bind to correct IPServer and port 0
-					printf("Binding connection socket to %s\n", Sock_ntop((struct sockaddr *) servaddr, sizeof(*(struct sockaddr *)servaddr)));
+					printf("binding connection socket to %s\n", Sock_ntop((struct sockaddr *) servaddr, sizeof(*(struct sockaddr *)servaddr)));
 					if(bind(connsock, (struct sockaddr *) servaddr, sizeof(*(struct sockaddr *) servaddr)) < 0)
 					{
 						printf("bind connosck error, %d\n", errno);
@@ -227,7 +189,6 @@ int main(int argc, char **argv)
 					}
 					
 					//Use getsockname to get ephemeral port number
-					printf("getsockname\n");
 					servlen = sizeof(*(struct sockaddr *) servaddr);
 					if(getsockname(connsock, (struct sockaddr *) servaddr, &servlen) < 0)
 					{
@@ -251,19 +212,8 @@ int main(int argc, char **argv)
 					printf("Connsock connected! Sending ephemeral port number\n");
 					sprintf(portnum, "%d", servaddr->sin_port);
 					
-					//ssize_t dg_send_recv(int fd, const void *outbuff, size_t outbytes, void *inbuff, size_t inbytes, const SA *destaddr, socklen_t destlen)
-					//sendto(socklist[i], sendline, strlen(sendline), 0, (struct sockaddr *)&cliaddr, clilen);
-					
 					strcpy(send_msg.data, portnum);
-					dg_send_recv(socklist[i], connsock, portnum, strlen(portnum), NULL, NULL, (struct sockaddr *)&cliaddr, clilen, 2, 0);
-					
-					//send_msg.type = 2;
-					//dg_send_recv(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen, 2, 0);
-					//sendto(socklist[i],(struct message *)&send_msg, sizeof(send_msg), 0, (struct sockaddr *)&cliaddr, clilen);
-					//dg_send_recv(int fd, const char *outbuff, size_t outbytes, char *inbuff, size_t inbytes, SA *destaddr, socklen_t destlen, int proto, int sendtype)
-					//**************************NANA! Am I using this correctly? I'm sending the port number as a string
-					//dg_sendrecv(socklist[i], msgrecv, 0 sendline, strlen(sendline), (struct sockaddr *) &cliaddr, clilen);					
-					
+					dg_send_recv(socklist[i], connsock, portnum, strlen(portnum), NULL, NULL, (struct sockaddr *)&cliaddr, clilen, 2, 0);				
 					close(socklist[i]);
 					
 					strncpy(filename, recv_msg.data, strlen(recv_msg.data));
@@ -276,14 +226,9 @@ int main(int argc, char **argv)
 						printf("Server child error: file open\n");
 						exit(1);
 					}
-
-					printf("Reconnect:");
-					printf("IP Address : %s\n",Inet_ntop(AF_INET, &cliaddr.sin_addr, rcvline, sizeof(rcvline)));
-					printf("Well-known port number : %d\n", cliaddr.sin_port);
 					
-
 					dg_echofun(fp, connsock, (struct sockaddr *)&cliaddr, clilen, windowtype, max_window_size);
-										
+					close(connsock);					
 					exit(0);
 				}
 			}
@@ -300,71 +245,4 @@ void sig_chld(int signo)
 	while((pid = waitpid(-1, &stat, WNOHANG)) > 0) //Wait for the correct child to terminate
 		printf("SIGCHLD - child %d terminated\n\n", pid);
 	return;
-}
-
-//Used for testing, will be removed before submission 
-void mydg_echo(int sockfd, struct sockaddr *pcliaddr, socklen_t clilen, struct sockaddr *myaddr)
-{
-	int			n;
-	char		mesg[MAXLINE];
-	socklen_t	len;
-
-	for ( ; ; ) {
-		len = clilen;
-		n = recvfrom(sockfd, mesg, MAXLINE, 0, pcliaddr, &len);
-		printf("child %d, datagram from %s", getpid(),
-			   Sock_ntop(pcliaddr, len));
-		printf(", to %s\n", Sock_ntop(myaddr, clilen));
-
-		sendto(sockfd, mesg, n, 0, pcliaddr, len);
-	}
-}
-
-//Used for testing, will be removed before submission
-void print_ifi(struct ifi_info		*ifi)
-{
-	struct sockaddr	*sa;
-	u_char		*ptr;
-	int		i;
-	
-	if (ifi->ifi_index != 0)
-			printf("(%d) ", ifi->ifi_index);
-		printf("<");
-/* *INDENT-OFF* */
-		if (ifi->ifi_flags & IFF_UP)			printf("UP ");
-		if (ifi->ifi_flags & IFF_BROADCAST)		printf("BCAST ");
-		if (ifi->ifi_flags & IFF_MULTICAST)		printf("MCAST ");
-		if (ifi->ifi_flags & IFF_LOOPBACK)		printf("LOOP ");
-		if (ifi->ifi_flags & IFF_POINTOPOINT)	printf("P2P ");
-		printf(">\n");
-/* *INDENT-ON* */
-
-		if ( (i = ifi->ifi_hlen) > 0) {
-			ptr = ifi->ifi_haddr;
-			do {
-				printf("%s%x", (i == ifi->ifi_hlen) ? "  " : ":", *ptr++);
-			} while (--i > 0);
-			printf("\n");
-		}
-		if (ifi->ifi_mtu != 0)
-			printf("  MTU: %d\n", ifi->ifi_mtu);
-
-		if ( (sa = ifi->ifi_addr) != NULL)
-			printf("  IP addr: %s\n",
-						Sock_ntop_host(sa, sizeof(*sa)));
-
-/*=================== cse 533 Assignment 2 modifications ======================*/
-
-		if ( (sa = ifi->ifi_ntmaddr) != NULL)
-			printf("  network mask: %s\n",
-						Sock_ntop_host(sa, sizeof(*sa)));
-
-/*=============================================================================*/
-
-		if ( (sa = ifi->ifi_brdaddr) != NULL)
-			printf("  broadcast addr: %s\n",
-						Sock_ntop_host(sa, sizeof(*sa)));
-		if ( (sa = ifi->ifi_dstaddr) != NULL)
-			printf("  destination addr: %s\n",
-						Sock_ntop_host(sa, sizeof(*sa)));
 }

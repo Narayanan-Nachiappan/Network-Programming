@@ -61,13 +61,25 @@ unprtt.h
 
 ----------------------------------------
 
-Server Overview
+SERVER
 The server works by waiting for a client to connect to one of its interfaces. The client and server share a
 special protocol, so if the message received on the socket does not have the proper protocol number, the 
 server will ignore the client. When the server recieves a valid packet, it forks a child process to continue
 handle the client. The server checks to see if the client is local, and if it is, it uses SO_DONTROUTE. The
 server creates a new socket and sends the client the port it should connect to, and then sends the client
 the file it requested on that socket.
+
+In the server.in file, there should be three parameters:
+-Well-known port number for server
+-Maximum sending sliding-window size (in number of datagrams).
+-ARQ method (1 for Stop-and-Wait, 2 for Selective ARQ)
+The third parameter is to specify whether you would like to use Stop-and-Wait or Selective ARQ.
+
+Missing from the server side is the ability to differentiate between a new request and a request that was resent because
+of a timeout on the client-side. We considered a few ways to do this, one of which would be to keep a list of the pids of
+the children that are currently running and where client they are serving. If a new request comes in from the same client
+and the child has not terminated, it would be a repeat. Unfortunately, there seems to be no straight-forward way to get the
+status of the child without waiting for it to terminate, which is not what we would want to do.
 ----------------------------------------
 
 Report, in a ReadMe file which you hand in with your code,
@@ -90,7 +102,6 @@ struct sock_info
 
 These structures were kept in an array called 'infolist'.
  
-
 ----------------------------------------
 
 Report the details of your modifications to the code of Section 22.5 in the ReadMe file
