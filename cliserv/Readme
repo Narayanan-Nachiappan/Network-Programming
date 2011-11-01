@@ -80,6 +80,31 @@ of a timeout on the client-side. We considered a few ways to do this, one of whi
 the children that are currently running and where client they are serving. If a new request comes in from the same client
 and the child has not terminated, it would be a repeat. Unfortunately, there seems to be no straight-forward way to get the
 status of the child without waiting for it to terminate, which is not what we would want to do.
+
+----------------------------------------
+
+CLIENT
+
+When a client starts, it first reads it arguments from the file client.in
+
+In the client.in file, there should be nine parameters:
+-IP Address of the server
+-Well-known port number of server
+-filename to be transferred
+-Receiving sliding-window size (in number of datagrams)
+-Random generator seed value
+-Probability p of datagram loss. This should be a real number in the range [0.0 , 1.0]
+-The mean miu, in milliseconds.
+-ARQ method (1 for Stop-and-Wait, 2 for Selective ARQ)
+The third parameter is to specify whether you would like to use Stop-and-Wait or Selective ARQ.
+-rtt timeout test (1 for test.)
+If this value is set as 1, client sleep for a while and terminates after receiving first packet.
+
+The client checks if the server host is ¡®local¡¯ to its (extended) Ethernet. If so, all its communication to the server is to occur as MSG_DONTROUTE. The client now creates a UDP socket and calls bind on IPclient, with 0 as the port number. This will cause the kernel to bind an ephemeral port to the socket.
+The client connects its socket to IPserver and the well-known port number of the server.The client sends a datagram to the server giving the filename for the transfer. This send is backed up by a timeout in case the datagram is lost.
+The client  receives the port number to create connection for file transfer.
+Whenever a datagram arrives, or an ACK is about to be sent out, the client uses  random number generator (RNG) function rand() (initialized by the client.in argument value seed) to decide with probability p if the datagram or ACK is discarded by way of simulating transmission loss across the network. In case of that it is not discarded, the data of packets will be put into the receiving buffer. In a separate thread, the messages will be printed out.
+
 ----------------------------------------
 
 Report, in a ReadMe file which you hand in with your code,
