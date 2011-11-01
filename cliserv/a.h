@@ -148,12 +148,13 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		Writen(sockfd, (char *)&send_msg, n);
 
 		if(recv_msg.type == HD_EOF_FILE){
+			err_msg("----------------------------------------");
 			fprintf(stderr,"EOF\n");
 			fprintf(stderr,"Client in TIME_WAIT status\n");
 			fprintf(stderr,"WAITING FOR 2*RTO\n");
 			struct timeval tv;
 	
-			tv.tv_sec=5;
+			tv.tv_sec= rttinfo.rtt_rto * 2;
 			tv.tv_usec=0;
 			FD_ZERO(&rset);
 			FD_SET(sockfd, &rset);
