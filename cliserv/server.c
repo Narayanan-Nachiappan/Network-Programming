@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 {
 	FILE 				*fp;
 	int					i, j, k, match = 0, currentmax = 0, max_window_size = 0, numsocks = 0, maxfdp1 = 0;
-	int					connsock, servport, ephemeral, flags, local = 0;
+	int					connsock, servport, ephemeral, flags, local = 0, windowtype = 1;
 	int					socklist[MAXSOCKS];
 	struct sock_info	infolist[MAXSOCKS];
 	const int			on = 1;
@@ -36,6 +36,7 @@ int main(int argc, char **argv)
 	char				filename[MAXLINE], rcvline[MAXLINE], sendline[MAXLINE], portnum[10], address[16];
 
 	//Read information from server.in file
+	printf("Reading server.in\n");
 	fp = fopen("server.in", "r");
 	if (fp == NULL) 
 	{
@@ -44,8 +45,13 @@ int main(int argc, char **argv)
 	}
 	fscanf(fp, "%d", &servport);
 	fscanf(fp, "%d", &max_window_size);
-
+	fscanf(fp, "%d", &windowtype);
+	
 	printf("Port: %d, Max Window Size: %d\n", servport, max_window_size);
+	if(windowtype == 1)
+		printf("ARQ Type: Stop-and-Wait\n");
+	else
+		printf("ARQ Type: Selective ARQ\n");
 	
 	//Bind unicast address 
 	for (i = 0, ifihead = ifi = Get_ifi_info_plus(AF_INET, 1); ifi != NULL && i < MAXSOCKS; ifi = ifi->ifi_next, i++) 
@@ -118,7 +124,10 @@ int main(int argc, char **argv)
 		
 		//printf("select\n");
 		if(select(maxfdp1, &rset, NULL, NULL, NULL) < 0)
-			printf("select error %d %s\n", errno, strerror(errno));
+		{
+			if(errno != 4)
+				printf("select error %d %s\n", errno, strerror(errno));
+		}
 		
 		//Handle a connection request on sockets that are ready
 		printf("selected\n");
@@ -128,6 +137,27 @@ int main(int argc, char **argv)
 			{
 				//Fork child to handle client
 				printf("Socket %d ready\n", i);
+				//Get filename from client
+				clilen = sizeof(cliaddr);
+				j = recvfrom(socklist[i], (struct message *)&recv_msg, sizeof(recv_msg), 0,  (struct sockaddr *)&cliaddr, &clilen);
+				inet_ntop(AF_INET, &cliaddr.sin_addr, address, clilen);
+				
+				if(j == -1)
+				{
+					//printf("recvfrom error %d, exiting\n", errno); //recvfrom error
+					//exit(1);
+					continue;
+				}
+				if(recv_msg.type == 1)
+				{
+					printf("Received from %s, filename is %s, received %d bytes\n", address,  recv_msg.data, j);
+				}
+				else 
+				{
+					//printf("Invalid message\n");
+					//exit(1);
+					continue;
+				}
 				if ((pid = Fork()) == 0) 
 				{	
 					//Close all other sockets
@@ -142,22 +172,23 @@ int main(int argc, char **argv)
 					}
 					
 					//Get filename from client
-					printf("Recvfrom\n");
+					//printf("Recvfrom\n");
 					//******************NANA! Is there any function that just waits to receive one message and then sends an ack? If so, let me know
 					//and I can change this part to include it
 					//j = recvfrom(socklist[i], filename, MAXLINE, 0, (struct sockaddr *)&cliaddr, &clilen);
+					/*
 					clilen = sizeof(cliaddr);
 					j = recvfrom(socklist[i], (struct message *)&recv_msg, sizeof(recv_msg), 0,  (struct sockaddr *)&cliaddr, &clilen);
 					if(j == -1)
 					{
 						printf("recvfrom error %d\n, exiting", errno); //recvfrom error
 						exit(1);
-					}
+					}*/
 					
 					//strcpy(address, );
 					//rcv = (struct sockaddr *) cliaddr;
 					inet_ntop(AF_INET, &cliaddr.sin_addr, address, clilen);
-					printf("Received from %s, filename is %s, received %d bytes\n", address,  recv_msg.data, j);
+					//printf("Received from %s, filename is %s, received %d bytes\n", address,  recv_msg.data, j);
 					//printf("Received from %s, filename is %s, received %d bytes\n", address,  filename, j);
 					
 					//test to see if the client is local
@@ -251,18 +282,8 @@ int main(int argc, char **argv)
 					printf("Well-known port number : %d\n", cliaddr.sin_port);
 					
 
-					dg_echofun(fp, connsock, (struct sockaddr *)&cliaddr, clilen);
-					
-					//dg_echofun(fp, socklist[i], (struct sockaddr *)&cliaddr, clilen);
-					/*
-					if(send(connsock, filename, strlen(filename), 0) < 0)
-					{
-						printf("send error %d\n", errno);
-					}*/
-					//sendto(connsock, filename, strlen(filename), 0, (struct sockaddr *)&cliaddr2, clilen2);
-					//sendto(socklist[i], filename, strlen(filename), 0, (struct sockaddr *)&cliaddr, clilen);
-					//send(socklist[i], filename, strlen(filename), 0);
-					
+					dg_echofun(fp, connsock, (struct sockaddr *)&cliaddr, clilen, windowtype, max_window_size);
+										
 					exit(0);
 				}
 			}

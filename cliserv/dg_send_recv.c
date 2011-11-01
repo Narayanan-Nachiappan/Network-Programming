@@ -238,12 +238,12 @@ sig_alrm(int signo)
 ssize_t
 Dg_send_recv(int fd, int fd2, const char *outbuff, size_t outbytes,
 			 char *inbuff, size_t inbytes,
-			  SA *destaddr, socklen_t destlen, int proto, int sendtype)
+			  SA *destaddr, socklen_t destlen, int proto, int sendtype, int windowtype, int maxwindowsize)
 {
 	ssize_t	n;
 
-	int windtype=1;
-	int windsize=5;
+	int windtype= windowtype;
+	int windsize= maxwindowsize;
 	if(windtype==1)
 	n = dg_send_recv(fd, fd2, outbuff, outbytes, inbuff, inbytes,
 					 destaddr, destlen, proto, sendtype);
@@ -260,7 +260,7 @@ n = dg_send_recv_selective(fd, fd2, outbuff, outbytes, inbuff, inbytes,
 
 
 
-void dg_echofun(FILE * fp,int sockfd, const SA *pcliaddr, socklen_t clilen)
+void dg_echofun(FILE * fp,int sockfd, const SA *pcliaddr, socklen_t clilen, int windowtype, int maxwindowsize)
 {
 socklen_t len;
 char mesg[MAXLINE];
@@ -289,7 +289,7 @@ sendline[i]='\0';
   //fprintf(stderr,"%s",sendline);
   //fprintf(stderr,"\nSlow start to avoid congestion on network with size 1\n");
   n = Dg_send_recv(sockfd,0, sendline, strlen(sendline),
-recvline, MAXLINE, pcliaddr, clilen,eof,send);
+recvline, MAXLINE, pcliaddr, clilen,eof,send, windowtype,  maxwindowsize);
   i=0;
   for(k=0;k<496;k++){
  sendline[k]='\0';
@@ -299,7 +299,7 @@ end:
 sendline[i]='\0';
 //fprintf(stderr,"%s",sendline);
 n = Dg_send_recv(sockfd,0, sendline, strlen(sendline),
-recvline, MAXLINE, pcliaddr, clilen,eof,send);
+recvline, MAXLINE, pcliaddr, clilen,eof,send, windowtype,  maxwindowsize);
 err_msg("End OF FIle");
 err_msg(" ");
 } 
