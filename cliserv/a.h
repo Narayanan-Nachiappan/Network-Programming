@@ -92,8 +92,15 @@ int getIntMsg(struct message msg){
 }
 
 void printMessage(struct message msg){
+
+	int size;
+	if(msg.type == HD_EOF_FILE)
+		size = strlen(msg.data);
+	else
+		size = sizeof(msg);
+		
 	err_msg("----------------------------------------");
-	err_msg("Packet received (%d Byte)", sizeof(msg));
+	err_msg("Packet received (%i Bytes)", size);
 	err_msg("Time Stamp: %d", msg.ts);
 	err_msg("Sequence#: %d", msg.seq);
 	err_msg("Type: %d", msg.type);
@@ -219,8 +226,9 @@ void *printBuffer(int miu){ // thread that dequeues and prints recv_buffer
 
 int expo(int miu){
 	float random = ((rand() % 100) +1) * 0.01;
-	int result = (-1 * log(random)) * miu;
+	//int result = (-1 * log(random)) * miu;
 	//err_msg("pthread: sleep for %d millisecond", result);
+	int result = 2;
 	return result;
 }
 
