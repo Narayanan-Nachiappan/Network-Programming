@@ -13,7 +13,7 @@ fd_set rset;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-struct queueNode{
+struct queueNode{ // for receiveing buffer
 	char data[MAXLINE];
 	struct queueNode *nextPtr;
 } *headPtr, *tailPtr ;
@@ -27,7 +27,7 @@ static struct message {
   
 } send_msg, recv_msg;
 
-void printQueue(){
+void printQueue(){ /* for testing */
 	err_msg("----------------------------------------");
 	err_msg("* Printing Queue");
 	struct queueNode *tempPtr = headPtr;
@@ -37,7 +37,7 @@ void printQueue(){
 	}
 }
 
-void enqueue(char *dataLine){
+void enqueue(char *dataLine){ /* put received messages into buffer */
 	Pthread_mutex_lock(&mutex);
 	
 	struct queueNode *newPtr;
@@ -59,7 +59,7 @@ void enqueue(char *dataLine){
 	Pthread_mutex_unlock(&mutex);
 }
 
-void dequeue(){
+void dequeue(){ /* dequeue the message and prints out */
 	err_msg("----------------------------------------");
 	err_msg("* Dequeue");
 
@@ -107,23 +107,25 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 	char	sendline[MAXLINE], recvline[MAXLINE ],outstr[MAXLINE + 1];
 	static struct rtt_info   rttinfo;
 	static int	rttinit = 0;
-		len=servlen;
-		fprintf(stderr,"Window size: %d\n",windSize);
-		n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
-		
-		srand(seed);
-		
+	
+	err_msg("loss probability = %lf", loss);
+	
+	len=servlen;
+	fprintf(stderr,"Window size: %d\n",windSize);
+	n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
+	srand(seed); // feed seed	
+
 	while (n>0) {
 		float random = ((rand() % 101)) * 0.01;
-		err_msg("loss probability = %lf", loss);
-		err_msg("random = %lf", random);
+		
+		//err_msg("random = %lf", random);
 
-		if (random < loss){
-			err_msg("drop the message");
+		if (random < loss){ /* Drop the packet like it's hot with probability of 'loss' */
+			err_msg("drop the message (seq: %d)", recv_msg.seq);
 			continue;
 		}
 		enqueue(recv_msg.data);
-		//printMessage(recv_msg);
+		printMessage(recv_msg);
 		//printQueue();
 
 		if (rttinit == 0) {
@@ -133,7 +135,8 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 		}
 		rtt_newpack(&rttinfo);		/* initialize for this packet */
 		send_msg.ts = rtt_ts(&rttinfo);
-
+		
+		err_msg("----------------------------------------");
 		sprintf(outstr,"* sending ack for received datagram %d \n",recv_msg.seq);
 		Fputs(outstr,stdout);
 		send_msg.seq=recv_msg.seq;
@@ -150,7 +153,7 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 			fprintf(stderr,"WAITING FOR 2*RTO\n");
 			struct timeval tv;
 	
-		tv.tv_sec=5;
+			tv.tv_sec=5;
 			tv.tv_usec=0;
 			FD_ZERO(&rset);
 			FD_SET(sockfd, &rset);
@@ -172,7 +175,7 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 	}
 }
 
-// Check if the two addr is in the local network
+/* Check if the two addr is in the local network (for client) */
 int isLocalNetwork(char *cli_addr, char *serv_addr, char *mask_addr){
 	char addr1[4], addr2[4], addr3[4], addr4[4];
 	char addr5[4], addr6[4], addr7[4], addr8[4];

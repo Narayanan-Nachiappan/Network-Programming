@@ -66,9 +66,7 @@ int main(int argc, char **argv){
 	char bc_addr[INET_ADDRSTRLEN];
 
 	err_msg("Examine Client's IP Address: 127.0.0.1");
-	
 	for (ifihead = ifi = Get_ifi_info_plus(AF_INET, atoi("127.0.0.1")); ifi != NULL; ifi = ifi->ifi_next) {
-		
 		printf("%s: ", ifi->ifi_name);
 		if (ifi->ifi_index != 0)
 			printf("(%d) ", ifi->ifi_index);
@@ -94,9 +92,8 @@ int main(int argc, char **argv){
 					}
 				}
 				if(!isSameHost){
-					if(strcmp(Sock_ntop_host(sa, sizeof(*sa)), serv_ip_addr) == 0
-						|| strcmp(serv_ip_addr, "127.0.0.1") == 0
-						) isSameHost = 1;
+					if(strcmp(Sock_ntop_host(sa, sizeof(*sa)), serv_ip_addr) == 0 || strcmp(serv_ip_addr, "127.0.0.1") == 0)
+						isSameHost = 1;
 				}
 			}
 		}
@@ -110,21 +107,14 @@ int main(int argc, char **argv){
 			} while (--i > 0);
 			printf("\n");
 		}
-		if (ifi->ifi_mtu != 0)
-			printf("  MTU: %d\n", ifi->ifi_mtu);
-
-		if ( (sa = ifi->ifi_addr) != NULL)
-			printf("  IP addr: %s\n",
-						Sock_ntop_host(sa, sizeof(*sa)));
+		if (ifi->ifi_mtu != 0) printf("  MTU: %d\n", ifi->ifi_mtu);
+		if ( (sa = ifi->ifi_addr) != NULL) printf("  IP addr: %s\n", Sock_ntop_host(sa, sizeof(*sa)));
 
 /*=================== cse 533 Assignment 2 modifications ======================*/
-
 		if ( (sa = ifi->ifi_ntmaddr) != NULL)
 			printf("  network mask: %s\n",
 						Sock_ntop_host(sa, sizeof(*sa)));
-
 /*=============================================================================*/
-
 		if ( (sa = ifi->ifi_brdaddr) != NULL){
 			printf("  broadcast addr: %s\n",
 						Sock_ntop_host(sa, sizeof(*sa)));
@@ -134,12 +124,9 @@ int main(int argc, char **argv){
 			printf("  destination addr: %s\n",
 						Sock_ntop_host(sa, sizeof(*sa)));
 	}
-	
 	err_msg("Server address: %s", serv_ip_addr);
 	free_ifi_info_plus(ifihead);
-
 	err_msg("----------------------------------------");
-	
 	if(isSameHost){
 		err_msg("Server is the same host as the client,");
 		err_msg(" change the server address to loopback address, so as client address.");
@@ -149,7 +136,6 @@ int main(int argc, char **argv){
 		err_msg("Server is local");
 		strcpy(cli_ip_addr, local_cli_ip_addr);
 	}
-	
 	err_msg("Client address: %s", cli_ip_addr);
 	err_msg("Server address: %s", serv_ip_addr);
 	serv_ip_addr[15] = '\0';
@@ -162,19 +148,13 @@ int main(int argc, char **argv){
 	// use 0 as the port number. this will cause the kernel to bind an ephemeral port to the socket.
 	servaddr.sin_port = htons(0);
 	sockfd = Socket(AF_INET, SOCK_DGRAM, 0);
-
-	// added
 	err_msg("----------------------------------------");
 	err_msg("Bind a socket");
-	
-	//Bind(sockfd, (SA *) &servaddr, sizeof(servaddr));
 	if (bind(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0){
 		err_quit("bind error %d", errno);
 	};
-	
 	struct sockaddr_in ss_cli, ss_serv;
 	char str[INET_ADDRSTRLEN];
-
 	socklen_t len;
 	len = sizeof(ss_cli);
 	if (getsockname(sockfd, (SA *) &ss_cli, &len) < 0){
@@ -186,12 +166,9 @@ int main(int argc, char **argv){
 	err_msg("----------------------------------------");
 	err_msg("Connect a socket");
 	
-
 	Inet_pton(AF_INET, serv_ip_addr, &servaddr.sin_addr);
 	servaddr.sin_port = htons(atoi(port));
-
-	if(connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0)
-	{
+	if(connect(sockfd, (SA *) &servaddr, sizeof(servaddr)) < 0){
 		printf("connect error %d\n", errno);
 		exit(1);
 	}
@@ -209,6 +186,7 @@ int main(int argc, char **argv){
 	err_msg("Initializing connection.");
 	err_msg("Filename : %s", file_name);
 	
+	/* Check timeout */
 	Signal(SIGALRM, sig_alrm);
 	rtt_newpack(&rttinfo); /* initialize for this packet */
 
@@ -237,17 +215,17 @@ sendagain:
 		#endif
 		goto sendagain;
 	}
-		do{
-			err_msg("Waiting for initial packet from the server.");
-			Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, NULL,NULL);
-			printMessage(recv_msg);
-
-			if(recv_msg.type != HD_INIT_SERV){
-				err_msg("Different protocol type.");
-			}
-		} while(recv_msg.type != HD_INIT_SERV);
+	do{
+		err_msg("Waiting for initial packet from the server.");
+		// waiting for the port number from the server
+		Recvfrom(sockfd, (struct message *)&recv_msg, MAXLINE, 0, NULL,NULL);
+		printMessage(recv_msg);
+		if(recv_msg.type != HD_INIT_SERV){
+			err_msg("Different protocol type.");
+		}
+	} while(recv_msg.type != HD_INIT_SERV);
+	alarm(0);
 	
-		alarm(0);
 	//change socket number and make another connection.
 	servaddr.sin_port = htons(getIntMsg(recv_msg));
 
@@ -267,16 +245,18 @@ sendagain:
 	send_msg.seq=recv_msg.seq;
 	Writen(sockfd, (char *)&send_msg, sizeof(send_msg));
 
+	// Create a separate thread that dequeues the receive butter and prints messages 
 	pthread_t tid;
 	Pthread_create(&tid, NULL, printBuffer, atoi(mean));
 
+	// start receiving
 	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size), atof(loss), atoi(seed));
 	
+	// Dequeue and print rest of messages after receiving EOF from the server.
 	while(headPtr != NULL){
 		err_msg("Wait until recv_buff gets empty");
 		sleep(1);
 	}
-
 	exit(0);
 }
 

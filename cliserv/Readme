@@ -1,0 +1,88 @@
+CSE 533 - Network Programming
+Assignment 2
+
+Group# 15
+	Amelia Ellison - 107838108
+	Narayanan Nachiappan - 107996031
+	Youngbum Kim - 107387376
+
+----------------------------------------
+1. Command to use to obrain
+
+cse533_group15_assignment2.tar
+
+----------------------------------------
+2. Srouse files
+
+/* include helper functions and definitions of protocol */
+a.h
+
+/* */
+a2h.h
+
+/* client */
+client.c
+
+/* client input */
+client.in
+
+/* */
+dg_send_recv.c
+
+/* */
+get_ifi_info_pluc.c
+
+/* Makefile */
+Makefile
+
+/* */
+mask.c
+
+/* This file */
+Readme.txt
+
+/* */
+rtt.c
+
+/* server */
+server.c
+
+/* server input*/
+server.in
+
+/* */
+struct.c
+
+/* */
+unpifiplus.h
+
+/* */
+unprtt.h
+
+----------------------------------------
+
+Report, in a ReadMe file which you hand in with your code,
+ on the modifications you had to introduce to ensure that only unicast addresses are bound,
+ and on your implementation of the array of structures described above.
+
+
+----------------------------------------
+
+Report the details of your modifications to the code of Section 22.5 in the ReadMe file
+ which you hand in with your code.
+
+
+----------------------------------------
+
+Report on the details of the ARQ mechanism you implemented in the ReadMe file you hand in.
+ Indeed, you should report on all the TCP mechanisms you implemented in the ReadMe file.
+
+
+----------------------------------------
+
+In the ReadMe file you hand in,
+ report on how you dealt with the issues raised here:
+ sender notifying receiver of the last datagram, clean closing, and so on.
+
+
+
