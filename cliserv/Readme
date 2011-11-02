@@ -87,7 +87,7 @@ CLIENT
 
 When a client starts, it first reads it arguments from the file client.in
 
-In the client.in file, there should be nine parameters:
+In the client.in file, there "should be nine" parameters:
 -IP Address of the server
 -Well-known port number of server
 -filename to be transferred
