@@ -34,6 +34,9 @@ int main(int argc, char **argv){
 	char seed[20];
 	char loss[20];
 	char mean[20];
+	char window_type[20];
+	char rtt_timeout_test[20];
+	
 	char recvline[MAXLINE];
 	
 	fscanf(clientin,"%s", serv_ip_addr);
@@ -43,6 +46,8 @@ int main(int argc, char **argv){
 	fscanf(clientin,"%s", seed);
 	fscanf(clientin,"%s", loss);
 	fscanf(clientin,"%s", mean);
+	fscanf(clientin,"%s", window_type);
+	fscanf(clientin,"%s", rtt_timeout_test);
 
 	fclose(clientin);
 
@@ -250,7 +255,7 @@ sendagain:
 	Pthread_create(&tid, NULL, printBuffer, atoi(mean));
 
 	// start receiving
-	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size), atof(loss), atoi(seed));
+	dg_client( sockfd, (SA *) &servaddr, sizeof(servaddr),atoi(window_size), atof(loss), atoi(seed), atoi(rtt_timeout_test));
 	
 	// Dequeue and print rest of messages after receiving EOF from the server.
 	while(headPtr != NULL){
