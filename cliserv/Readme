@@ -129,10 +129,14 @@ rtt.c
 ------------------
 
 
-The client checks if the server host is ¡®local¡¯ to its (extended) Ethernet. If so, all its communication to the server is to occur as MSG_DONTROUTE. The client now creates a UDP socket and calls bind on IPclient, with 0 as the port number. This will cause the kernel to bind an ephemeral port to the socket.
-The client connects its socket to IPserver and the well-known port number of the server.The client sends a datagram to the server giving the filename for the transfer. This send is backed up by a timeout in case the datagram is lost.
-The client  receives the port number to create connection for file transfer.
-Whenever a datagram arrives, or an ACK is about to be sent out, the client uses  random number generator (RNG) function rand() (initialized by the client.in argument value seed) to decide with probability p if the datagram or ACK is discarded by way of simulating transmission loss across the network. In case of that it is not discarded, the data of packets will be put into the receiving buffer. In a separate thread, the messages will be printed out.
+The client checks if the server host is ¡®local¡¯ to its (extended) Ethernet. If so, all its communication to the server is to occur as MSG_DONTROUTE.
+The client now creates a UDP socket and calls bind on IPclient, with 0 as the port number. This will cause the kernel to bind an ephemeral port to 
+the socket. The client connects its socket to IPserver and the well-known port number of the server.The client sends a datagram to the server giving 
+the filename for the transfer. This send is backed up by a timeout in case the datagram is lost. The client  receives the port number to create connection 
+for file transfer. Whenever a datagram arrives, or an ACK is about to be sent out, the client uses  random number generator (RNG) function rand() 
+(initialized by the client.in argument value seed) to decide with probability p if the datagram or ACK is discarded by way of simulating transmission 
+loss across the network. In case of that it is not discarded, the data of packets will be put into the receiving buffer. In a separate thread, the messages 
+will be printed out.
 
 ----------------------------------------------------------------------
 TEST CASES
@@ -147,9 +151,8 @@ TEST CASES
 
 ----------------------------------------
 
-Report, in a ReadMe file which you hand in with your code,
- on the modifications you had to introduce to ensure that only unicast addresses are bound,
- and on your implementation of the array of structures described above.
+Report, in a ReadMe file which you hand in with your code, on the modifications you had to introduce to ensure that only unicast addresses are bound,
+and on your implementation of the array of structures described above.
 
 Using the Get_ifi_info_plus function, we were able to bind on all unicast addresses. In order to bind on
 broadcast address, we would have needed to add IFF_BROADCAST to ifi_flags and to bind on wildcard addresses
@@ -176,14 +179,28 @@ Report the details of your modifications to the code of Section 22.5 in the Read
 ----------------------------------------
 
 Report on the details of the ARQ mechanism you implemented in the ReadMe file you hand in.
- Indeed, you should report on all the TCP mechanisms you implemented in the ReadMe file.
 
+We implemented two ARQ mechanisms in this project.
 
+Mode 1: Stop-and-Wait
+In this ARQ mode, the sender sends one packet, waits for an ACK for that packet from the receiver
+then sends the next packet. If the timeout occurs before this ACK is received, the sender will
+resend the packet. The server quits after it has reached the maximum amount of retries.
+
+Mode 2: Selective ARQ
+In this ARQ the server sends as many packets possible depeding on the size of its window. While it is
+sending, it may receives ACKs from the client. When the sender has sent the maximum number of packets,
+it receives as many ACKs as possible. This frees up some of the window for it to send more packets to
+the client. The server uses Slow Start, which means it starts with a window size of one and increases for
+every successfully acknowledged packet up until it reaches the advertised window size in the client ACK.
+It can also decrease based on the advertised window size. The client acknowledges packets by sending back the
+number of the first packet that is missing. When that packet is receives, it sends an ACK for the next missing 
+packet, which also acknowledges those that arrived before.
+ 
 ----------------------------------------
 
-In the ReadMe file you hand in,
- report on how you dealt with the issues raised here:
- sender notifying receiver of the last datagram, clean closing, and so on.
+In the ReadMe file you hand in report on how you dealt with the issues raised here:
+sender notifying receiver of the last datagram, clean closing, and so on.
 
 When the sender reads the EOF character, it uses the HD_EOF_FILE number for the packet's protocol. It then continues 
 to wait for acknowledgements from the client until it either receives an ACK for the EOF packet or reaches it's maximum
