@@ -141,7 +141,7 @@ TEST CASES
 	-Set the RTT Timeout test value to '1' in the client.in file
 	-Set the ARQ value to '1' in the server.in file
 	
--To test the sliding window
+-To test the Selective ARQ
 	-Set the ARQ value to '2' in the client.in file
 	-Set the ARQ value to '2' in the server.in file
 
