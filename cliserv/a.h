@@ -107,19 +107,25 @@ void printMessage(struct message msg){
 	err_msg("Message: %s", msg.data);
 }
 
-void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize, float loss, int seed){
+void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize, float loss, int seed, int rtt_timeout_test){
 	int n;
 	socklen_t len;
 	int i=1;
-	char	sendline[MAXLINE], recvline[MAXLINE ],outstr[MAXLINE + 1];
+	char sendline[MAXLINE], recvline[MAXLINE ],outstr[MAXLINE + 1];
 	static struct rtt_info   rttinfo;
 	static int	rttinit = 0;
-	
+
 	err_msg("loss probability = %lf", loss);
-	
 	len=servlen;
 	fprintf(stderr,"Window size: %d\n",windSize);
 	n = recv(sockfd, (char*)&recv_msg, MAXLINE, 0);
+
+	if(rtt_timeout_test == 1){
+		err_msg("Test rtt time out. Client sleep and terminates");
+		sleep(50);
+		exit(1);
+	}
+
 	srand(seed); // feed seed	
 
 	while (n>0) {
@@ -161,7 +167,7 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 			fprintf(stderr,"WAITING FOR 2*RTO\n");
 			struct timeval tv;
 	
-			tv.tv_sec= rttinfo.rtt_rto * 2;
+			tv.tv_sec= RTT_RXTMAX * 2;
 			tv.tv_usec=0;
 			FD_ZERO(&rset);
 			FD_SET(sockfd, &rset);
@@ -171,6 +177,9 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 					Writen(sockfd, (char *)&send_msg, n);
 					}
 				else{
+					fprintf(stderr,"EOF\n");
+					fprintf(stderr,"Client was in TIME_WAIT status\n");
+					fprintf(stderr,"Done WAITING FOR 2*RTO\n");
 					err_msg("TIME_WAIT is done. Client terminating");
 					}
 			break;

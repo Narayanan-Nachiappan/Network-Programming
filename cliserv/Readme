@@ -75,6 +75,17 @@ In the server.in file, there should be three parameters:
 -ARQ method (1 for Stop-and-Wait, 2 for Selective ARQ)
 The third parameter is to specify whether you would like to use Stop-and-Wait or Selective ARQ.
 
+example of server.in
+------------------
+
+
+44444
+10
+2
+
+
+------------------
+
 Missing from the server side is the ability to differentiate between a new request and a request that was resent because
 of a timeout on the client-side. We considered a few ways to do this, one of which would be to keep a list of the pids of
 the children that are currently running and where client they are serving. If a new request comes in from the same client
@@ -99,6 +110,24 @@ In the client.in file, there "should be nine" parameters:
 The third parameter is to specify whether you would like to use Stop-and-Wait or Selective ARQ.
 -rtt timeout test (1 for test.)
 If this value is set as 1, client sleep for a while and terminates after receiving first packet.
+
+example of client.in
+------------------
+
+
+130.245.1.116
+44444
+rtt.c
+5
+28833
+0.8
+5
+1
+1
+
+
+------------------
+
 
 The client checks if the server host is ¡®local¡¯ to its (extended) Ethernet. If so, all its communication to the server is to occur as MSG_DONTROUTE. The client now creates a UDP socket and calls bind on IPclient, with 0 as the port number. This will cause the kernel to bind an ephemeral port to the socket.
 The client connects its socket to IPserver and the well-known port number of the server.The client sends a datagram to the server giving the filename for the transfer. This send is backed up by a timeout in case the datagram is lost.
