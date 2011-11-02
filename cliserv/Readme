@@ -9,7 +9,7 @@ Group# 15
 ----------------------------------------
 1. Command to use to obrain
 
-cse533_group15_assignment2.tar
+tar xvf cse533_group15_assignment2.tar
 
 ----------------------------------------
 2. Source files
@@ -133,6 +133,17 @@ The client checks if the server host is ¡®local¡¯ to its (extended) Ethernet. If
 The client connects its socket to IPserver and the well-known port number of the server.The client sends a datagram to the server giving the filename for the transfer. This send is backed up by a timeout in case the datagram is lost.
 The client  receives the port number to create connection for file transfer.
 Whenever a datagram arrives, or an ACK is about to be sent out, the client uses  random number generator (RNG) function rand() (initialized by the client.in argument value seed) to decide with probability p if the datagram or ACK is discarded by way of simulating transmission loss across the network. In case of that it is not discarded, the data of packets will be put into the receiving buffer. In a separate thread, the messages will be printed out.
+
+----------------------------------------------------------------------
+TEST CASES
+-To test the RTT Timeout
+	-Set the ARQ value to '1' in the client.in file
+	-Set the RTT Timeout test value to '1' in the client.in file
+	-Set the ARQ value to '1' in the server.in file
+	
+-To test the sliding window
+	-Set the ARQ value to '2' in the client.in file
+	-Set the ARQ value to '2' in the server.in file
 
 ----------------------------------------
 
