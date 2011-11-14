@@ -1,0 +1,194 @@
+CSE 533 - Network Programming
+Assignment 2
+
+Group# 15
+	Amelia Ellison - 107838108
+	Narayanan Nachiappan - 107996031
+	Youngbum Kim - 107387376
+
+----------------------------------------
+1. Command to use to obrain
+
+tar xvf cse533_group15_assignment2.tar
+
+----------------------------------------
+2. Source files
+
+/* include helper functions and definitions of protocol */
+a.h
+
+/* */
+a2h.h
+
+/* client */
+client.c
+
+/* client input */
+client.in
+
+/* */
+dg_send_recv.c
+
+/* */
+get_ifi_info_pluc.c
+
+/* Makefile */
+Makefile
+
+/* */
+mask.c
+
+/* This file */
+Readme.txt
+
+/* */
+rtt.c
+
+/* server */
+server.c
+
+/* server input*/
+server.in
+
+/* */
+struct.c
+
+/* */
+unpifiplus.h
+
+/* */
+unprtt.h
+
+----------------------------------------
+
+SERVER
+The server works by waiting for a client to connect to one of its interfaces. The client and server share a
+special protocol, so if the message received on the socket does not have the proper protocol number, the 
+server will ignore the client. When the server recieves a valid packet, it forks a child process to continue
+handle the client. The server checks to see if the client is local, and if it is, it uses SO_DONTROUTE. The
+server creates a new socket and sends the client the port it should connect to, and then sends the client
+the file it requested on that socket.
+
+In the server.in file, there should be three parameters:
+-Well-known port number for server
+-Maximum sending sliding-window size (in number of datagrams).
+-ARQ method (1 for Stop-and-Wait, 2 for Selective ARQ)
+The third parameter is to specify whether you would like to use Stop-and-Wait or Selective ARQ.
+
+example of server.in
+------------------
+
+
+44444
+10
+2
+
+
+------------------
+
+Missing from the server side is the ability to differentiate between a new request and a request that was resent because
+of a timeout on the client-side. We considered a few ways to do this, one of which would be to keep a list of the pids of
+the children that are currently running and where client they are serving. If a new request comes in from the same client
+and the child has not terminated, it would be a repeat. Unfortunately, there seems to be no straight-forward way to get the
+status of the child without waiting for it to terminate, which is not what we would want to do.
+
+----------------------------------------
+
+CLIENT
+
+When a client starts, it first reads it arguments from the file client.in
+
+In the client.in file, there "should be nine" parameters:
+-IP Address of the server
+-Well-known port number of server
+-filename to be transferred
+-Receiving sliding-window size (in number of datagrams)
+-Random generator seed value
+-Probability p of datagram loss. This should be a real number in the range [0.0 , 1.0]
+-The mean miu, in milliseconds.
+-ARQ method (1 for Stop-and-Wait, 2 for Selective ARQ)
+The third parameter is to specify whether you would like to use Stop-and-Wait or Selective ARQ.
+-rtt timeout test (1 for test.)
+If this value is set as 1, client sleep for a while and terminates after receiving first packet.
+
+example of client.in
+------------------
+
+
+130.245.1.116
+44444
+rtt.c
+5
+28833
+0.8
+5
+1
+1
+
+
+------------------
+
+
+The client checks if the server host is ¡®local¡¯ to its (extended) Ethernet. If so, all its communication to the server is to occur as MSG_DONTROUTE. The client now creates a UDP socket and calls bind on IPclient, with 0 as the port number. This will cause the kernel to bind an ephemeral port to the socket.
+The client connects its socket to IPserver and the well-known port number of the server.The client sends a datagram to the server giving the filename for the transfer. This send is backed up by a timeout in case the datagram is lost.
+The client  receives the port number to create connection for file transfer.
+Whenever a datagram arrives, or an ACK is about to be sent out, the client uses  random number generator (RNG) function rand() (initialized by the client.in argument value seed) to decide with probability p if the datagram or ACK is discarded by way of simulating transmission loss across the network. In case of that it is not discarded, the data of packets will be put into the receiving buffer. In a separate thread, the messages will be printed out.
+
+----------------------------------------------------------------------
+TEST CASES
+-To test the RTT Timeout
+	-Set the ARQ value to '1' in the client.in file
+	-Set the RTT Timeout test value to '1' in the client.in file
+	-Set the ARQ value to '1' in the server.in file
+	
+-To test the sliding window
+	-Set the ARQ value to '2' in the client.in file
+	-Set the ARQ value to '2' in the server.in file
+
+----------------------------------------
+
+Report, in a ReadMe file which you hand in with your code,
+ on the modifications you had to introduce to ensure that only unicast addresses are bound,
+ and on your implementation of the array of structures described above.
+
+Using the Get_ifi_info_plus function, we were able to bind on all unicast addresses. In order to bind on
+broadcast address, we would have needed to add IFF_BROADCAST to ifi_flags and to bind on wildcard addresses
+we would have needed to use a struck sockaddr_in with it's saddr value set to INADDR_ANY. By not performing
+these actions, we only bound on the unicast addresses.
+
+Here is the custom structure used to retain socket information:
+struct sock_info 
+{
+	int	sockfd; //socket descriptor
+	struct sockaddr  *bound_addr; //bound address
+	struct sockaddr  *netmask_addr; //netmask address
+	struct sockaddr  *subnet_addr;	//subnet address	
+};
+
+These structures were kept in an array called 'infolist'.
+ 
+----------------------------------------
+
+Report the details of your modifications to the code of Section 22.5 in the ReadMe file
+ which you hand in with your code.
+
+
+----------------------------------------
+
+Report on the details of the ARQ mechanism you implemented in the ReadMe file you hand in.
+ Indeed, you should report on all the TCP mechanisms you implemented in the ReadMe file.
+
+
+----------------------------------------
+
+In the ReadMe file you hand in,
+ report on how you dealt with the issues raised here:
+ sender notifying receiver of the last datagram, clean closing, and so on.
+
+When the sender reads the EOF character, it uses the HD_EOF_FILE number for the packet's protocol. It then continues 
+to wait for acknowledgements from the client until it either receives an ACK for the EOF packet or reaches it's maximum
+retransmission value for the EOF packet. The server child then closes the sockets and exits, and the SIGCHLD signal is handled 
+by waitpid in the sigchld handler. When the client receives the EOF packet, it does a TIME_WAIT. At the end of the TIME_WAIT, the
+communication ends.
+
+

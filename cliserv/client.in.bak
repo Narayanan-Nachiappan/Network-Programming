@@ -1,0 +1,23 @@
+130.245.1.59
+44444
+rtt.c
+5
+28833
+0.8
+5
+1
+0
+
+1.IP Address of the server
+2.Well-known port number of server
+3.filename to be transferred
+4Receiving sliding-window size (in number of datagrams)
+5.Random generator seed value
+6.Probability p of datagram loss. This should be a real number in the range [0.0 , 1.0]
+7.The mean miu, in milliseconds.
+8.ARQ method (1 for Stop-and-Wait, 2 for Selective ARQ)
+The third parameter is to specify whether you would like to use Stop-and-Wait or Selective ARQ.
+9.rtt timeout test (1 for test.)
+If this value is set as 1, client sleep for a while and terminates after receiving first packet.
+
+all "nine" values "have to" be in client.in file.
