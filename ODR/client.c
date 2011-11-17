@@ -1,5 +1,4 @@
 #include "unp.h"
-#include "sendrecv.c"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -18,8 +17,14 @@ int main(int argc, char **argv){
 	int	sockfd;
 	int	tempfd;
 	char buf[24] = "GROUP15XXXXXX";
-
+	char vmAddr[INET_ADDRSTRLEN];
+	char hostName[SIZE];
 	struct sockaddr_un	cliaddr, servaddr;
+
+	gethostname(hostName, sizeof(hostName));
+
+	err_msg("Host Name: %s", hostName);
+	err_msg("----------------------------------------");
 
 	sockfd = Socket(AF_LOCAL, SOCK_DGRAM, 0);
 
@@ -39,6 +44,9 @@ int main(int argc, char **argv){
 	servaddr.sun_family = AF_LOCAL;
 	strcpy(servaddr.sun_path, UNIXDG_PATH);
 
+	struct hostent *hptr;
+	struct in_addr **pptr;
+
 	int menu = 0;
 	printf("Choose the vm node (1 to 10): ");
 
@@ -46,12 +54,27 @@ int main(int argc, char **argv){
 		scanf("%d", &menu);
 		fflush(stdin);
 
-		err_msg("client at node vm i1 sending request to server at vm i2");
-		msg_send(sockfd, (SA *) &servaddr, 9999, "O", 0);
+		if(menu < 0 || menu > 10){
+			err_msg("Invalid vm number. Exit");
+			break;
+		}
+
+		char vmName[4];
+		sprintf(vmName, "vm%d", menu);
+		hptr = gethostbyname(vmName);
+		pptr = hptr->h_addr_list;
+		Inet_ntop(hptr->h_addrtype, *pptr, vmAddr, sizeof(vmAddr));
+
+		err_msg("%s Address: %s", vmName, vmAddr);
+		err_msg("client at node %s sending request to server at %s", hostName, vmName);
+		
+		//msg_send(sockfd, vmAddr, 9999, "O", 0);
 		
 		char message[SIZE];
 		int port;
-		msg_recv(sockfd, message, (SA *) &servaddr, &port);
+		//msg_recv(sockfd, message, (SA *) &servaddr, &port);
+
+
 
 	} while(menu > 0);
 
