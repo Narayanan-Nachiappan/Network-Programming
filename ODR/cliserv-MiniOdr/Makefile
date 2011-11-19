@@ -2,7 +2,6 @@
 CC = gcc
 LIBS = /home/courses/cse533/Stevens/unpv13e/libunp.a -lpthread
 FLAGS = -g -O2 
-#CFLAGS = ${FLAGS} -I../lib 
 CFLAGS = ${FLAGS} -I/home/courses/cse533/Stevens/unpv13e/lib
 
 all: domainclient domainserver client server
@@ -33,10 +32,11 @@ server.o:
 	${CC} ${CFLAGS} -c server.c
 
 ###minidor
-miniodr: miniodr.o
-	${CC} ${CFLAGS} -o miniodr miniodr.o ${LIBS}
-miniodr.o:
+miniodr.o: miniodr.c
 	${CC} ${CFLAGS} -c miniodr.c
+miniodr: miniodr.o get_hw_addrs.o
+	${CC} ${FLAGS} -o miniodr miniodr.o get_hw_addrs.o ${LIBS}
+
 
 clean:
-	rm -f domainclient.o domainserver.o domainclient domainserver *.bak client.o client.bak server.o server.bak
+	rm -f domainclient.o domainserver.o domainclient domainserver *.bak client.o client.bak server.o server.bak miniodr.o
