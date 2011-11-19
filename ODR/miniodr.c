@@ -7,16 +7,6 @@ struct interface
 	char	ip_addr[16];	/* IP address */
 };
 
-
-struct payload
-{
-	int 	srcport;
-	int 	destport;
-	int		msgsz;
-	char	message[100];
-};
-
-
 struct ODRmsg
 {
 	int				type;
@@ -55,30 +45,23 @@ int main(int argc, char **argv)
 	}
 	
 	staleness  = atoi(argv[1]);
-	host = gethostname(canonical, 16);
-	//host = gethostbyname(name);
+	
+	gethostname(name, 16);
+	host = malloc(sizeof(struct hostent));
+	host = gethostbyname(name);
 	if(host == NULL)
 		printf("host is NULL\n");
-	printf("Local ODR on host %s\n", canonical);
-	//printf("%s\n", host->h_addr);
-	//strncpy(canonical, host->h_addr, 16);
-	
+	strncpy(canonical, inet_ntoa( *( struct in_addr*)( host -> h_addr_list[0])), 16);
+	printf("Local ODR on host %s\n", name);
+	printf( "Canonical IP: %s\n", canonical);
+
 	printf("Finding interfaces\n");
 	for (i = 0, hwahead = hwa = Get_hw_addrs(); hwa != NULL && i < MAX_INTERFACES; hwa = hwa->hwa_next, i++)
 	{
-		/*
-		sa = hwa->ip_addr;
-		printf("IP addr = %s\n", sock_ntop_host(sa, sizeof(*sa)));
-		//inet_ntop(AF_INET, s->sin_addr, address, sizeof(struct sockaddr_in));
-		//printf("IP Address: %s\n",  address);
-		printf("Index: %d\n", hwa->if_index);*/
-		//printf("Hardware Address: %s\n",  hwa->if_haddr);
-		//sa = interfaces[i].ip_addr;
-		//inet_ntop(AF_INET, sa, address, sizeof(*sa));
-		//strncpy(address, sock_ntop_host(sa, sizeof(*sa)), 16);
 		strncpy(interfaces[i].if_haddr, hwa->if_haddr, 6);
 		interfaces[i].if_index = hwa->if_index;
-		strncpy(interfaces[i].ip_addr, hwa->ip_addr, 16);
+		sa = hwa->ip_addr;
+		strncpy(interfaces[i].ip_addr, sock_ntop_host(sa, sizeof(*sa)), 16);
 		printf("IP Address: %s\n",  interfaces[i].ip_addr);
 		printf("Hardware Address: %s\n", interfaces[i].if_haddr);
 		printf("Index: %d\n", interfaces[i].if_index);

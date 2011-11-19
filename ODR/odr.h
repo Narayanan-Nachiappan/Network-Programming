@@ -34,7 +34,7 @@ struct demux
 
 struct route
 {
-	char			*nexthop_ip;
+	char			nexthop_ip[16];
 	char 			nexthop_haddr[6];
 	int				index; 
 	int 			hops; 
