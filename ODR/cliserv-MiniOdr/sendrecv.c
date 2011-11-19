@@ -1,0 +1,83 @@
+#include <string.h>
+#include <error.h>
+#include <sys/socket.h>
+#include <stdio.h>
+#include "constants.h"
+SA sockaddress;
+socklen_t address_len;
+int msg_send(int sockfd, char* address, int destport, char* message, int flag,int cliserv)
+{
+	err_msg("Inside MSG SEND");
+	char sendline[100], port[7], flagstr[3];
+	sendline[0]='\0';
+	struct sockaddr_un su;
+	strncat(sendline, address, 16);
+	strcat(sendline, " ");
+	sprintf(port, "%d", destport);
+	strcat(sendline, port);
+	err_msg("15");
+	strcat(sendline, " ");
+	strncat(sendline, message, strlen(message) );
+	strcat(sendline, " ");
+	sprintf(flagstr, "%d", flag);
+	err_msg("20");
+	strcat(sendline, flagstr);
+	strcat(sendline, "\0");
+	su.sun_family = AF_LOCAL;
+	strcpy(su.sun_path, SERVER_UNIX_DG_PATH);
+	strcat(su.sun_path, "\0");
+    err_msg("25");
+	if(cliserv==1){
+	if(sendto(sockfd, (void *)sendline, sizeof(sendline), 0, (struct sockaddr*) &su, sizeof(struct sockaddr)) < 0)
+	{
+		printf("sendto error: %d %s\n", errno, strerror(errno));
+		return -1;
+	}
+	}
+	else{
+if(sendto(sockfd, (void *)sendline, sizeof(sendline), 0, (struct sockaddr*) &sockaddress, sizeof(struct sockaddr)) < 0)
+	{
+		printf("sendto error: %d %s\n", errno, strerror(errno));
+		return -1;
+	}
+	}
+	return 0;
+}
+
+int msg_recv(int sockfd, char* message, char* address, int* port,int cliserv)
+{
+	char recvline[MAXLINE], *temp;
+	char *result;
+	 address_len=sizeof(sockaddress);
+	err_msg("43");
+	if(recvfrom(sockfd, recvline, MAXLINE, 0, &sockaddress, &address_len) < 0)
+	{
+		printf("recvfrom error: %d %s\n", errno, strerror(errno));
+		return -1;
+	}
+err_msg("48");
+
+err_msg("%s",recvline);
+if(cliserv==2){
+	result = strtok( recvline, " " );
+
+   strcpy(address,result);
+    err_msg( "%s", address );
+	
+	result = strtok( NULL, " ");
+	
+	int portnum=atoi(result);
+	*port=portnum;
+    err_msg( "%d", *port );
+	
+	result = strtok( NULL, " ");
+	message=result;
+    err_msg( "%s", message );
+	
+	result = strtok( NULL, " ");
+	err_msg( "%s", result );
+}
+	err_msg("###End of msg rev");
+	
+	return 0;
+}
