@@ -1,28 +1,11 @@
 #include "odr.h"
 
-struct interface
-{
-	char    if_haddr[6];	/* hardware address */
-	int     if_index;		/* interface index */
-	char	ip_addr[16];	/* IP address */
-};
-
-struct ODRmsg
-{
-	int				type;
-	char			src_ip[16];
-	char			dest_ip[16];
-	int 			broadcast_id;
-	int 			hopcount;
-	int				RREPsent;
-	int				forced_discovery;
-	struct	payload	app;
-};
-
 struct interface		interfaces[MAX_INTERFACES];
 struct ODRmsg			*msg;
-int 					pfsock, appsock, if_nums = 0, rtablesize = 0, dtablesize = 0, broadcast_id = 0;
+int 					pfsock, appsock, if_nums = 0, rtablesize = 0, dtablesize = 0, broadcast_id = 0, staleness;
 char					sunpath_root[20], canonical[16];
+
+void printHW(char* ptr);
 
 int main(int argc, char **argv)
 {
@@ -31,7 +14,7 @@ int main(int argc, char **argv)
 	struct sockaddr_un 		su;
 	struct sockaddr			*sa;
 	socklen_t				addrlen;
-	int 					i, staleness;
+	int 					i, j;
 	int 					protocol, maxfdp1;
 	fd_set					rset;
 	char					address[16], name[16];
@@ -58,13 +41,22 @@ int main(int argc, char **argv)
 	printf("Finding interfaces\n");
 	for (i = 0, hwahead = hwa = Get_hw_addrs(); hwa != NULL && i < MAX_INTERFACES; hwa = hwa->hwa_next, i++)
 	{
-		strncpy(interfaces[i].if_haddr, hwa->if_haddr, 6);
-		interfaces[i].if_index = hwa->if_index;
-		sa = hwa->ip_addr;
-		strncpy(interfaces[i].ip_addr, sock_ntop_host(sa, sizeof(*sa)), 16);
-		printf("IP Address: %s\n",  interfaces[i].ip_addr);
-		printf("Hardware Address: %s\n", interfaces[i].if_haddr);
-		printf("Index: %d\n", interfaces[i].if_index);
+		if(strncmp(hwa->if_name, "eth0", 4) != 0 && strncmp(hwa->if_name, "lo", 2) != 0)
+		{
+			for(j = 0; j < 6; j++)
+			{
+				interfaces[i].if_haddr[j] = hwa->if_haddr[j];
+			}
+			interfaces[i].if_index = hwa->if_index;
+			sa = hwa->ip_addr;
+			strncpy(interfaces[i].ip_addr, sock_ntop_host(sa, sizeof(*sa)), 16);
+			printf("IP Address: %s\n",  interfaces[i].ip_addr);
+			printf("Hardware Address: ");
+			printHW(interfaces[i].if_haddr);
+			printf("\nIndex: %d\n\n", interfaces[i].if_index);
+		}
+		else
+			i--;
 	}
 	
 	if_nums = i;
@@ -223,4 +215,13 @@ int processODRmsg(struct ODRmsg app)
 		printf("processODRmessage sendto error: %d %s\n", errno, strerror(errno));
 		return -1;
 	}
+}
+
+void printHW(char* ptr)
+{
+	int i = 6;
+	do 
+	{
+		printf("%.2x%s", *ptr++ & 0xff, (i == 1) ? " " : ":");
+	} while (--i > 0);
 }

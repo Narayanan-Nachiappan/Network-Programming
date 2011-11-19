@@ -34,11 +34,18 @@ struct demux
 
 struct route
 {
-	char			nexthop_ip[16];
-	char 			nexthop_haddr[6];
+	char			ip[16];
+	char 			nexthop[6];
 	int				index; 
 	int 			hops; 
 	time_t 			timestamp;
+};
+
+struct interface
+{
+	char    if_haddr[6];	/* hardware address */
+	int     if_index;		/* interface index */
+	char	ip_addr[16];	/* IP address */
 };
 
 struct payload
@@ -46,5 +53,29 @@ struct payload
 	int 	srcport;
 	int 	destport;
 	int		msgsz;
-	char	*message;
+	char	message[30];
 };
+
+struct ODRmsg
+{
+	int				type;
+	char			src_ip[16];
+	char			dest_ip[16];
+	int 			broadcast_id;
+	int 			hopcount;
+	int				RREPsent;
+	int				forced_discovery;
+	struct	payload	app;
+};
+
+struct ethframe
+{
+	char src[6];
+	char dest[6];
+	int protocol;
+	struct ODRmsg data;
+};
+
+struct demux *headdemux, *lastdemux;
+int dtablesize;
+struct route			routing_table[MAX_ROUTES];
