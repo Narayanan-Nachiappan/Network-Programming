@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 #define SIZE 1024
 
 int main(int argc, char **argv){
@@ -34,8 +33,13 @@ int main(int argc, char **argv){
 	cliaddr.sun_family = AF_LOCAL;
 	
 	tempfd = mkstemp(buf);
-	strcpy(cliaddr.sun_path, buf);
+	int random = ((rand() % 45535) +15000);
+	char temp[6];
+	sprintf(temp, "%d", random);
+	strcat(buf, temp);
 	
+	strcpy(cliaddr.sun_path, buf);
+
 	err_msg("Temporary File name created by mkstemp()");
 	err_msg(buf);
 	err_msg("----------------------------------------");
