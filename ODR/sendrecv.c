@@ -5,19 +5,22 @@
 
 int msg_send(int sockfd, char* address, int destport, char* message, int flag)
 {
-	char sendline[100], port[7];
+	char sendline[100], port[7], flagstr[3];
 	struct sockaddr_un su;
 	
 	dest_addr.sin_family = AF_INET;
 	dest_addr.sin_port = destport;
 	inet_pton(AF_INET, address, &dest_addr.sin_addr);
 	
-	strncat(sendline, address, sizeof(address));
+	strncat(sendline, address, 16);
 	strcat(sendline, " ");
 	sprintf(port, "%d", destport);
 	strcat(sendline, port);
 	strcat(sendline, " ");
-	strncat(sendline, message, sizeof(message));
+	strncat(sendline, message, strlen(message) - 1);
+	strcat(sendline, " ");
+	sprintf(flagstr, "%d", flag);
+	strncat(sendline, flagstr, strlen(flag));
 	strcat(sendline, "\0");
 	
 	su.sun_family = AF_LOCAL;
