@@ -39,4 +39,4 @@ miniodr: miniodr.o get_hw_addrs.o
 
 
 clean:
-	rm -f domainclient.o domainserver.o domainclient domainserver *.bak client.o client.bak server.o server.bak miniodr.o
+	rm -f domainclient.o domainserver.o domainclient domainserver *.bak client.o client.bak server.o server.bak

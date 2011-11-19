@@ -27,5 +27,5 @@ time_t ticks;
 snprintf(time, sizeof(time), "%.24s\r\n", ctime(&ticks));
 err_msg("%s",address);
 err_msg("%d",port);
-msg_send(sockfd,address,port,time,0,2);
+msg_send(sockfd,address,port,time,0);
 }

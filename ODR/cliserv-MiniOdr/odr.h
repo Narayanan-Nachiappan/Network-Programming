@@ -10,15 +10,8 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <time.h>
+#include "constants.h"
 
-#define ODR_SUNPATH "tmp/group15odr\0"
-#define ODR_PROTOCOL 32325
-#define TIME_SERV_SUNPATH "cse533_unixdg_path\0"
-#define	SUNPATH_ROOT	"group15\0"
-#define TIME_PORT 44444
-#define MAX_INTERFACES 10
-#define MAX_ROUTES 10
-#define MAXLINE 1024
 
 #ifndef max
 	#define max( a, b ) ( ((a) > (b)) ? (a) : (b) )

@@ -44,7 +44,7 @@ int main(int argc, char **argv){
 
 	bzero(&servaddr, sizeof(servaddr));	/* fill in server's address */
 	servaddr.sun_family = AF_LOCAL;
-	strcpy(servaddr.sun_path, SERVER_UNIX_DG_PATH);
+	strcpy(servaddr.sun_path, ODR_SUNPATH);
 
 	struct hostent *hptr;
 	struct in_addr **pptr;
@@ -72,7 +72,7 @@ int main(int argc, char **argv){
 		err_msg("client at node %s sending request to server at %s", hostName, vmName);
 	
 	//	dg_send_recv_cli( sockfd,vmAddr,444444,"Message",1);
-	msg_send(sockfd,vmAddr,SERVER_UNIX_PORT,message,0,1);
+	msg_send(sockfd,vmAddr,SERVER_UNIX_PORT,message,0);
 	msg_recv(sockfd,message,vmAddr,SERVER_UNIX_PORT,1);
 
 	} while(menu > 0);

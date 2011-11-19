@@ -5,7 +5,7 @@
 #include "constants.h"
 SA sockaddress;
 socklen_t address_len;
-int msg_send(int sockfd, char* address, int destport, char* message, int flag,int cliserv)
+int msg_send(int sockfd, char* address, int destport, char* message, int flag)
 {
 	err_msg("Inside MSG SEND");
 	char sendline[100], port[7], flagstr[3];
@@ -24,23 +24,15 @@ int msg_send(int sockfd, char* address, int destport, char* message, int flag,in
 	strcat(sendline, flagstr);
 	strcat(sendline, "\0");
 	su.sun_family = AF_LOCAL;
-	strcpy(su.sun_path, SERVER_UNIX_DG_PATH);
-	strcat(su.sun_path, "\0");
-    err_msg("25");
-	if(cliserv==1){
+	strcpy(su.sun_path, ODR_SUNPATH);
+	err_msg("25");
+	
 	if(sendto(sockfd, (void *)sendline, sizeof(sendline), 0, (struct sockaddr*) &su, sizeof(struct sockaddr)) < 0)
 	{
 		printf("sendto error: %d %s\n", errno, strerror(errno));
 		return -1;
 	}
-	}
-	else{
-if(sendto(sockfd, (void *)sendline, sizeof(sendline), 0, (struct sockaddr*) &sockaddress, sizeof(struct sockaddr)) < 0)
-	{
-		printf("sendto error: %d %s\n", errno, strerror(errno));
-		return -1;
-	}
-	}
+	
 	return 0;
 }
 

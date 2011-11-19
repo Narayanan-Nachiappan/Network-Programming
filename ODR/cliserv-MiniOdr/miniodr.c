@@ -60,8 +60,9 @@ int main(int argc, char **argv)
 	}
 	
 	if_nums = i;
+	err_msg("%s",ODR_SUNPATH);
+
 	printf("Found %d interfaces\n", if_nums);
-	
 	//Creating packet socket
 	pfsock = socket(PF_PACKET, SOCK_RAW, htons(ODR_PROTOCOL));
 	if(pfsock < 0)
@@ -71,8 +72,6 @@ int main(int argc, char **argv)
 	}
 	
 	//Creating application socket
-	unlink(ODR_SUNPATH);
-	bzero(&su, sizeof(su));
 	su.sun_family = AF_LOCAL;
 	strcpy(su.sun_path, ODR_SUNPATH);
 	//strcat(su.sun_path, "\0");
@@ -84,8 +83,9 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	
+	unlink(ODR_SUNPATH);
 
-	if(bind(appsock, (struct sockaddr*) &su, sizeof(su)) < 0)
+	if(Bind(appsock, (struct sockaddr*) &su, SUN_LEN(&su)) < 0)
 	{
 		printf("bind failed: %d %s\n", errno, strerror(errno));
 		return -1;
@@ -94,9 +94,13 @@ int main(int argc, char **argv)
 	printf("Bound appsock\n");
 	for ( ; ; ) 
 	{
+		printf("in for\n");
 		FD_ZERO(&rset);
+		printf("zero\n");
 		FD_SET(pfsock, &rset);
+		printf("set1\n");
 		FD_SET(appsock, &rset);
+		printf("set2\n");
 		maxfdp1 = max(pfsock, appsock) + 1;
 		printf("max\n");
 		select(maxfdp1, &rset, NULL, NULL, NULL);
