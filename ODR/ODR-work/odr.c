@@ -50,10 +50,12 @@ int main(int argc, char **argv)
 	{
 		if(strncmp(hwa->if_name, "eth0", 4) != 0 && strncmp(hwa->if_name, "lo", 2) != 0)
 		{
+			/*
 			for(j = 0; j < 6; j++)
 			{
 				interfaces[i].if_haddr[j] = hwa->if_haddr[j];
-			}
+			}*/
+			memcpy((void*)interfaces[i].if_haddr, (void*)hwa->if_haddr, 6);
 			interfaces[i].if_index = hwa->if_index;
 			sa = hwa->ip_addr;
 			strncpy(interfaces[i].ip_addr, sock_ntop_host(sa, sizeof(*sa)), 16);
@@ -139,18 +141,17 @@ int main(int argc, char **argv)
 			}
 			
 			printf("Received message: \n");
+			printf("From: ");
 			printHW(rcvline);
-			printf("\n");
-			printHW(rcvline + 7);
+			printHW(rcvline + ETH_ALEN);
 			if(!toss())
 			{
 				msg = rcvline + 14;
 
-				for(i = 0; i < 6; i++)
-				{
-					neighbor[i] = rcvline[i];
-				}
-				
+				memcpy((void*)neighbor, (void*)rcvline + ETH_ALEN, ETH_ALEN);
+				printf(" To: ");
+				printHW(neighbor);
+				printf("\n");
 				processODRmsg(msg, sa);
 			}
 			else
@@ -162,14 +163,24 @@ int main(int argc, char **argv)
 int toss(rcvline)
 {
 	int i = 0;
+	struct ODRmsg *msg;
+	
 	for(i = 0; i < if_nums; i++)
 	{
-		if(memcmp(rcvline, interfaces[i].if_haddr, ETHALEN) == 0)
+		if(memcmp((void*) rcvline, (void*)interfaces[i].if_haddr, ETH_ALEN) == 0)
 		{
-			printf("We sent this, toss it!);
+			printf("Broadcast loopback, toss it!\n");
 			return 1;
 		}
 	}	
+	
+	msg = rcvline + 14;
+	
+	if(strncmp(msg->src_ip, canonical, 16) == 0)
+	{
+		printf("We sent this, toss it\n");
+		return 1;
+	}
 	
 	return 0;
 };
@@ -300,11 +311,6 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 	{
 		printf("Received RREQ\n");
 		
-		if(strcmp(msg.src_ip, canonical, 16) == 0)
-		{
-			printf("We sent this RREQ, toss it\n");
-			return 0;
-		}
 		//Update the routing table with information about the neighbor
 		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery));
 		
@@ -394,6 +400,8 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 				sendAPPmsg(&msg, gr);
 		}
 	}
+	else
+		printf("Message has invalid type: %d\n", ntohs(msg.type));
 	
 	return 0;
 }
@@ -487,6 +495,7 @@ int sendRREQ(struct ODRmsg RREQ, int incoming_if, int force, int RREPsent)
 
 int sendRREP(struct ODRmsg RREP, int out_if, int route, int force)
 {
+	printf("sending RREP\n");
 	int i, ifi;
 	
 	RREP.type = htons(1);
@@ -501,9 +510,9 @@ int sendRREP(struct ODRmsg RREP, int out_if, int route, int force)
 		return -1;
 	}
 	
-	if(sendPacket(RREP, out_if, route, 0) < 0)
+	if(sendPacket(RREP, ifi, route, 0) < 0)
 	{
-			printf("Failed to sendRREP on interface %i\n", i);
+			printf("Failed to sendRREP on interface %i\n", out_if);
 			return -1;
 	}
 	return 0;
@@ -550,12 +559,12 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 
 	socket_address.sll_hatype   = 1;
 	
-	if(broadcast)
+	if(broadcast == 1)
 		socket_address.sll_pkttype  = PACKET_BROADCAST;
 	else
 		socket_address.sll_pkttype  = PACKET_OTHERHOST;
 
-	socket_address.sll_halen    = ETH_ALEN;		
+	socket_address.sll_halen  =  ETH_ALEN;		
 
 	memcpy((void*)buffer, (void*)dest_mac, ETH_ALEN);
 	memcpy((void*)(buffer+ETH_ALEN), (void*)src_mac, ETH_ALEN);
@@ -564,7 +573,10 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 	
 	
 	/*send the packet*/
-	printf("Sending packet on interface %d\n", interfaces[out_if].if_index);
+	printf("Sending packet on interface index %d\n", interfaces[out_if].if_index);
+	printHW(src_mac);
+	printf(" to ");
+	printHW(dest_mac);
 	if(sendto(pfsock, buffer, ETH_FRAME_LEN, 0, (struct sockaddr*)&socket_address, sizeof(socket_address)) < 0)
 	{
 		printf("sendPacket sendto error: %d %s\n", errno, strerror(errno));
@@ -572,17 +584,18 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 	}
 	else
 	{
+		/*
 		h1 = gethostbyaddr(msg.src_ip, sizeof(msg.src_ip), AF_INET);
 		h2 = gethostbyaddr(msg.dest_ip, sizeof(msg.dest_ip), AF_INET);
 		if(h1 == NULL )
 			printf("h1 == NULL\n");
 		if(h2 == NULL)
-			printf("h2 == NULL\n");
+			printf("h2 == NULL\n");*/
 		
-		printf("ODR at node %s: sending frame hdr - src: %s  dest: ", name, name);
+		printf("\nODR at node %s: sending frame hdr - src: %s  dest: ", name, name);
 		printHW(buffer);
 		printf("\nODR msg payload - message: %s ", msg.app.message);
-		printf("type: %d\n", msg.type);
+		printf("type: %d\n", ntohs(msg.type));
 		//printf("src: %s  ", h1->h_name);
 		//printf("dest: %s\n", h2->h_name);
 		
