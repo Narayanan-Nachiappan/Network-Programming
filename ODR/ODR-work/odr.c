@@ -161,6 +161,16 @@ int main(int argc, char **argv)
 
 int toss(rcvline)
 {
+	int i = 0;
+	for(i = 0; i < if_nums; i++)
+	{
+		if(memcmp(rcvline, interfaces[i].if_haddr, ETHALEN) == 0)
+		{
+			printf("We sent this, toss it!);
+			return 1;
+		}
+	}	
+	
 	return 0;
 };
 
@@ -208,13 +218,13 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	printf("address %s\n", address);
 	strcpy(temp, strtok(NULL, " "));
 	printf("temp %s\n", temp);
-	sscanf(temp, "%d", port);
+	sscanf(temp, "%d", &port);
 	printf("port %d\n", port);
 	strcpy(message, strtok(NULL, " "));
 	printf("message %s\n", message);
 	strcpy(temp, strtok(NULL, " "));
 	printf("temp %s\n", temp);
-	sscanf(temp, "%d", flag);
+	sscanf(temp, "%d", &flag);
 	printf("flag %d\n", flag);
 	
 	/*
@@ -290,6 +300,11 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 	{
 		printf("Received RREQ\n");
 		
+		if(strcmp(msg.src_ip, canonical, 16) == 0)
+		{
+			printf("We sent this RREQ, toss it\n");
+			return 0;
+		}
 		//Update the routing table with information about the neighbor
 		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery));
 		
@@ -446,25 +461,24 @@ int sendAPPmsg(struct ODRmsg *app, int route)
 
 int sendRREQ(struct ODRmsg RREQ, int incoming_if, int force, int RREPsent)
 {
+	printf("sending RREQ for %s\n", RREQ.dest_ip);
 	int i, ifi;
 	
+	RREQ.type = htons(0);
 	RREQ.broadcast_id = htons(broadcast_id++);
 	RREQ.hopcount = htons(RREQ.hopcount + 1);
 	RREQ.RREPsent = htons(RREPsent);
 	RREQ.forced_discovery = htons(force);
+	strncpy(RREQ.app.message, "RREQ\0", 5);
+	printf("%s\n", RREQ.app.message);
 	
 	ifi = findInterface(incoming_if);
-	if(ifi == -1)
-	{
-		printf("Can't send RREP, invalid interface\n");
-		return -1;
-	}
 	
 	for(i = 0; i < if_nums; i++)
 	{
 		if(i != ifi)
 		{
-			if(sendPacket(RREQ, i, 0, 1) < 0)
+			if(sendPacket(RREQ, i, -1, 1) < 0)
 				printf("Failed to sendRREQ on interface %i\n", i);
 		}
 	}
@@ -478,6 +492,7 @@ int sendRREP(struct ODRmsg RREP, int out_if, int route, int force)
 	RREP.type = htons(1);
 	RREP.broadcast_id = htons(broadcast_id);
 	RREP.forced_discovery = force; //This should already be htons
+	strncpy(RREP.app.message, "RREP\0", 5);
 	
 	ifi = findInterface(out_if);
 	if(ifi == -1)
@@ -509,7 +524,7 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 	for(i = 0; i < 6; i++)
 	{
 		src_mac[i] = interfaces[out_if].if_haddr[i];
-		if(broadcast)
+		if(broadcast == 1)
 		{
 			dest_mac[i] = 0xFF;
 			socket_address.sll_addr[i] = 0xFF;
@@ -549,6 +564,7 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 	
 	
 	/*send the packet*/
+	printf("Sending packet on interface %d\n", interfaces[out_if].if_index);
 	if(sendto(pfsock, buffer, ETH_FRAME_LEN, 0, (struct sockaddr*)&socket_address, sizeof(socket_address)) < 0)
 	{
 		printf("sendPacket sendto error: %d %s\n", errno, strerror(errno));
@@ -556,13 +572,19 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 	}
 	else
 	{
-		h1 = gethostbyaddr(msg.src_ip, 16, AF_INET);
-		h2 = gethostbyaddr(msg.dest_ip, 16, AF_INET);
+		h1 = gethostbyaddr(msg.src_ip, sizeof(msg.src_ip), AF_INET);
+		h2 = gethostbyaddr(msg.dest_ip, sizeof(msg.dest_ip), AF_INET);
+		if(h1 == NULL )
+			printf("h1 == NULL\n");
+		if(h2 == NULL)
+			printf("h2 == NULL\n");
 		
 		printf("ODR at node %s: sending frame hdr - src: %s  dest: ", name, name);
 		printHW(buffer);
-		printf("\n");
-		printf("\nODR msg payload - message: %s  type: %d  src: %s  dest: %s\n", msg.app.message, msg.type, h1->h_name, h2->h_name);
+		printf("\nODR msg payload - message: %s ", msg.app.message);
+		printf("type: %d\n", msg.type);
+		//printf("src: %s  ", h1->h_name);
+		//printf("dest: %s\n", h2->h_name);
 		
 		return 0;
 	}
@@ -621,7 +643,7 @@ int findInterface(int if_index)
 	int i;
 	for(i = 0; i < if_nums; i++)
 	{
-		if(interfaces[i].if_index = if_index)
+		if(interfaces[i].if_index == if_index)
 			return i;
 	}
 	
