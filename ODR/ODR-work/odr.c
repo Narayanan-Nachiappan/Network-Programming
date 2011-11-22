@@ -1,18 +1,32 @@
 #include "odr.h"
+#define MAX_UNSENT 10
+
+struct unsentmsg
+{
+	struct ODRmsg msg;
+	int empty;
+};
 
 struct interface		interfaces[MAX_INTERFACES];
-int 					pfsock, appsock, if_nums = 0, broadcast_id = 0, staleness;
+int 					pfsock, appsock, if_nums = 0, broadcast_id = 0, staleness, unsent_num = 0;
 char					sunpath_root[20], canonical[16], neighbor[6], name[16];
+struct unsentmsg		unsent[MAX_UNSENT];
 
 int processAPPmsg(char *rcvline, struct sockaddr* sa);
 int processODRmsg(struct ODRmsg *m, struct sockaddr* sa);
 int waitforRREP(char *dest);
-int sendAPPmsg(struct ODRmsg *app, int route);
+int sendAPPmsg(struct ODRmsg app, int route);
 int sendRREQ(struct ODRmsg RREQ, int out_if, int route, int force);
 int sendRREP(struct ODRmsg RREP, int out_if, int route, int force);
 int sendPacket(struct ODRmsg msg, int out_if, int rte, int broadcast);
+int toss(char *rcvline);
+int sendUnsentMsgs();
+int APPBackup(struct ODRmsg app);
+void unsent_init();
+int isDestination(char *address);
 int findInterface(int if_index);
 void printHW(char* ptr);
+void printAPPmsg(struct ODRmsg msg);
 
 int main(int argc, char **argv)
 {
@@ -27,6 +41,8 @@ int main(int argc, char **argv)
 	//char					address[16];
 	char					rcvline[MAXLINE];
 	struct hostent			*host;
+	struct sockaddr		temp;
+	struct  sockaddr_un	sckadr;
 	
 	if(argc < 2)
 	{
@@ -35,6 +51,9 @@ int main(int argc, char **argv)
 	}
 	
 	staleness  = atoi(argv[1]);
+	unsent_init();
+	rtable_init();
+	dtable_init();
 	
 	gethostname(name, 16);
 	host = malloc(sizeof(struct hostent));
@@ -119,16 +138,19 @@ int main(int argc, char **argv)
 		{
 			printf("appsock is ready\n");
 			//msg_recv(appsock, message, address, port);
-			addrlen = sizeof(sa);
+			addrlen = sizeof(sckadr);
 			
-			if(recvfrom(appsock, rcvline, MAXLINE, 0, sa, &addrlen) < 0)
+			if(recvfrom(appsock, rcvline, MAXLINE, 0, &temp, &addrlen) < 0)
 			{
 					printf("appsock recvfrom error: %d %s\n", errno, strerror(errno));
 					return -1;
 			}
 			
 			//su = (struct sockaddr_un*) sa;			
-			processAPPmsg(rcvline, sa);
+			//err_msg("%s",temp.sa_data);
+			//err_msg("%d",addrlen);
+
+			processAPPmsg(rcvline, &temp);
 		}
 		if(FD_ISSET(pfsock, &rset))
 		{
@@ -143,8 +165,8 @@ int main(int argc, char **argv)
 			printf("Received message: \n");
 			printf("From: ");
 			printHW(rcvline);
-			printHW(rcvline + ETH_ALEN);
-			if(!toss())
+			
+			if(!toss(rcvline))
 			{
 				msg = rcvline + 14;
 
@@ -160,14 +182,14 @@ int main(int argc, char **argv)
 	}
 }
 
-int toss(rcvline)
+int toss(char *rcvline)
 {
 	int i = 0;
 	struct ODRmsg *msg;
 	
 	for(i = 0; i < if_nums; i++)
 	{
-		if(memcmp((void*) rcvline, (void*)interfaces[i].if_haddr, ETH_ALEN) == 0)
+		if(memcmp((void*) (rcvline + ETH_ALEN), (void*)interfaces[i].if_haddr, ETH_ALEN) == 0)
 		{
 			printf("Broadcast loopback, toss it!\n");
 			return 1;
@@ -195,7 +217,7 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	int gr, s, port, destport, srcport, flag;
 	struct ODRmsg appmsg, msg;
 	struct demux *found;
-	struct sockaddr_un *su;
+	//struct sockaddr_un *su;
 	
 	printf("Received message from peer process\n");
 	printf("Message: %s\n", rcvline);
@@ -204,24 +226,23 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	message = malloc(30);
 	temp = malloc(50);
 
-	//Get the port number from the sun_path
-	/*
-	su = (struct sockaddr_un *) sa;
-	printf("Parse %s\n", su->sun_path);
-	temp = strtok(su->sun_path, "_");
-	printf("%s\n", temp);
+	err_msg("#############");
+	printf("Client UNIX PATH %s\n", sa->sa_data);
+	//printf("Parse %s\n", sa->sun_family);
+		err_msg("#############");
+	temp = strtok(sa->sa_data, "_");
+	printf("Standard Prefix %s\n", temp);
 	temp = strtok(NULL, "_");
-	printf("%s\n", temp);
-	sscanf(temp, "%d", srcport);
-	printf("%d\n", srcport);
+	srcport=atoi(temp);
+	printf(" port %d\n", srcport);
+	//Get the port number from the sun_path
 	
-	printf("Demux Table: %d %s\n", srcport, su->sun_path);
+	printf("Demux Table: %d %s\n", srcport, sa->sa_data);
 	found = inDemuxTable(srcport);
 	if(found != NULL)
 		updatetime(found); //update the entry
 	else
-		addNewDemux(srcport, su->sun_path); //make a new entry
-	*/
+		addNewDemux(srcport, sa->sa_data); //make a new entry
 	
 	//Read string
 	
@@ -229,9 +250,10 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	printf("address %s\n", address);
 	strcpy(temp, strtok(NULL, " "));
 	printf("temp %s\n", temp);
-	sscanf(temp, "%d", &port);
-	printf("port %d\n", port);
+	sscanf(temp, "%d", &destport);
+	printf("port %d\n", destport);
 	strcpy(message, strtok(NULL, " "));
+	strcat(message, "\0");
 	printf("message %s\n", message);
 	strcpy(temp, strtok(NULL, " "));
 	printf("temp %s\n", temp);
@@ -248,7 +270,7 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	
 	printf("Received msg_send request from local application:\n");
 	printf("Destination address: %s\n", address);
-	printf("Destination port: %d\n", port);
+	printf("Destination port: %d\n", destport);
 	printf("Destination message: %s\n", message);
 	printf("Flag: %d\n", flag);
 	
@@ -267,37 +289,46 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	if(flag == 1) //Force Route Discovery
 	{
 		sendRREQ(msg, -1, 1, 0); //struct ODRmsg oldmsg, int incoming_if, int force, int RREPsent
+		APPmsgBackup(msg);
+		/*
 		waitforRREP(msg.dest_ip);
 		gr = gotFreshRoute(msg.dest_ip);
 		if(gr != -1)
 			sendAPPmsg(&appmsg, gr);
 		gr = gotFreshRoute(msg.dest_ip);
-		sendAPPmsg(&appmsg, gr);
+		sendAPPmsg(&appmsg, gr);*/
 	}
 	else
 	{
-		gr = gotFreshRoute(msg.dest_ip);
+		printAPPmsg(appmsg);
+		gr = gotFreshRoute(msg.dest_ip, staleness);
 		if(gr == -1)
 		{
 			sendRREQ(msg, -1, 0, 0);
+			APPmsgBackup(appmsg);
+			/*
 			waitforRREP(msg.dest_ip);
 			gr = gotFreshRoute(msg.dest_ip);
 			if(gr != -1)
 				sendAPPmsg(&appmsg, gr);
 			else
-				printf("waitforRREP failed and we're quitting!\n");
+				printf("waitforRREP failed and we're quitting!\n");*/
 		}
 		else
-			sendAPPmsg(&appmsg, gr);
+			sendAPPmsg(appmsg, gr);
 	}
 	
 	//sendAPPmsg(&app);
+	free(address);
+	free(message);
+	free(temp);
+
 	return 0;
 }
 
 int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 {
-	int gr = 0, s = 0;
+	int gr = 0, s = 0, type;
 	char temp[16];
 	struct demux *found;
 	struct sockaddr_ll *sall;
@@ -306,8 +337,9 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 	sall = (struct sockaddr_ll *) sa;
 	
 	msg = *m;
+	type = ntohs(msg.type);
 	
-	if(msg.type == 0)
+	if(type == 0)
 	{
 		printf("Received RREQ\n");
 		
@@ -332,7 +364,7 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		else
 		{
 			//Check for a route in the table
-			gr = gotFreshRoute(msg.dest_ip);
+			gr = gotFreshRoute(msg.dest_ip, staleness);
 			if(gr == -1) //If there's no route in the table, send an RREQ
 				sendRREQ(msg, sall->sll_ifindex, msg.forced_discovery, 0);
 			else //If there's a fresh route, send an RREP
@@ -350,27 +382,29 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 			}
 		}
 	}
-	else if(msg.type == 1)
+	else if(type == 1)
 	{
 		printf("Received RREP\n");
 		
 		//Update the table
-		updateTable(msg.src_ip , neighbor, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery)); //src_ip or dest_ip?
+		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery)); //src_ip or dest_ip?
 		
 		if(!isDestination(msg.dest_ip))
 		{
 			//If you have a route, forward the RREP
-			gr = gotFreshRoute(msg.dest_ip);
+			gr = gotFreshRoute(msg.dest_ip, staleness);
 			if(gr != -1)
 				sendRREP(RREP, routing_table[gr].index, gr, msg.forced_discovery);
 			else
 				printf("No route?\n");
 		}
+		
+		sendUnsentMsgs();
 	}
-	else if(msg.type == 2)
+	else if(type == 2)
 	{
 		printf("Received application payload\n");
-		
+		printAPPmsg(msg);
 		//Update the table
 		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery)); //src_ip or dest_ip?
 		
@@ -383,29 +417,32 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		else
 		{
 			//Find a route
-			gr = gotFreshRoute(msg.dest_ip);
+			gr = gotFreshRoute(msg.dest_ip, staleness);
 			if(gr != -1)
 			{
-				//If there's no route, send an RREQ, wait for an RREP, and forward the message
+				//If there's no route, send an RREQ and stick the message in the UNSENT buffer
 				strncpy(RREQ.src_ip, canonical, 16);
 				strncpy(RREQ.dest_ip, msg.dest_ip, 16);
 				RREQ.hopcount = htons(0);
 				sendRREQ(RREQ, sall->sll_ifindex, -1, 1);
+				APPmsgBackup(msg);
+				/*
 				if(waitforRREP(msg.dest_ip) == 0)
 					sendAPPmsg(&msg, gr);
 				else
-					printf("waitforRREP failed\n");
+					printf("waitforRREP failed\n");*/
 			}
 			else
-				sendAPPmsg(&msg, gr);
+				sendAPPmsg(msg, gr);
 		}
 	}
 	else
-		printf("Message has invalid type: %d\n", ntohs(msg.type));
+		printf("Message has invalid type: %d\n", type);
 	
 	return 0;
 }
 
+/*
 int waitforRREP(char *dest)
 {
 	printf("Waiting for RREPs\n");
@@ -447,10 +484,15 @@ int waitforRREP(char *dest)
 	}
 	return 0;
 }
+*/
 
-int sendAPPmsg(struct ODRmsg *app, int route)
+int sendAPPmsg(struct ODRmsg app, int route)
 {
 	//Get the index from the routing table, use it to find the right interface;
+	//printf("??? %s %s\n", app.src_ip, app.dest_ip);
+	app.type = htons(2);
+	app.hopcount++;
+	printAPPmsg(app);
 	int inter = findInterface(routing_table[route].index);
 	if(inter == -1)
 	{
@@ -458,7 +500,7 @@ int sendAPPmsg(struct ODRmsg *app, int route)
 		return -1;
 	}	
 	
-	if(sendPacket(*app, inter, route, 1) == 0)
+	if(sendPacket(app, inter, route, 0) == 0)
 		return 0;
 	else
 	{
@@ -474,7 +516,7 @@ int sendRREQ(struct ODRmsg RREQ, int incoming_if, int force, int RREPsent)
 	
 	RREQ.type = htons(0);
 	RREQ.broadcast_id = htons(broadcast_id++);
-	RREQ.hopcount = htons(RREQ.hopcount + 1);
+	RREQ.hopcount++;
 	RREQ.RREPsent = htons(RREPsent);
 	RREQ.forced_discovery = htons(force);
 	strncpy(RREQ.app.message, "RREQ\0", 5);
@@ -595,7 +637,7 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 		printf("\nODR at node %s: sending frame hdr - src: %s  dest: ", name, name);
 		printHW(buffer);
 		printf("\nODR msg payload - message: %s ", msg.app.message);
-		printf("type: %d\n", ntohs(msg.type));
+		printf("type: %d\n", htons(msg.type));
 		//printf("src: %s  ", h1->h_name);
 		//printf("dest: %s\n", h2->h_name);
 		
@@ -609,12 +651,15 @@ int sendtoDest(struct ODRmsg msg) //FOR APPMSG ONLY!
 	struct sockaddr_un su;
 	char sendline[100], port[7];
 	
+	printf("Port: %d\n", msg.app.destport);
 	//Find the sun_path from the port number
+	//dest = inDemuxTable(ntohs(msg.app.destport));
 	dest = inDemuxTable(ntohs(msg.app.destport));
 	if(dest != NULL)
 	{
-		su.sun_family = AF_INET;
-		strncpy(su.sun_path, dest->sun_path, sizeof(dest->sun_path));
+		su.sun_family = AF_LOCAL;
+		strncpy(su.sun_path, dest->sun_path, strlen(dest->sun_path));
+		printf("Destination sun_path: %s\n", dest->sun_path);
 		
 		strncpy(sendline, msg.app.message, ntohs(msg.app.msgsz));
 		strcat(sendline, " ");
@@ -624,7 +669,8 @@ int sendtoDest(struct ODRmsg msg) //FOR APPMSG ONLY!
 		strncat(sendline, msg.src_ip, 16);
 		strcat(sendline, "\0");
 		
-		if(sendto(appsock, sendline, sizeof(sendline), 0, (struct sockaddr*) &su, sizeof(struct sockaddr)) < 0)
+		printf("Sending message: %s\n", sendline);
+		if(sendto(appsock, (void*) sendline, sizeof(sendline), 0, (struct sockaddr*) &su, sizeof(struct sockaddr)) < 0)
 		{
 			printf("sendtoDest sendto error: %d %s\n", errno, strerror(errno));
 			return -1;
@@ -634,6 +680,57 @@ int sendtoDest(struct ODRmsg msg) //FOR APPMSG ONLY!
 	{
 		printf("This destination port is not valid, sendtoDest failed\n");
 		return -1;
+	}
+}
+
+int sendUnsentMsgs()
+{
+	printf("Trying to send unsent messages...\n");
+	int i, gr;
+	for(i = 0; i < MAX_UNSENT; i++)
+	{
+		if(unsent[i].empty != 0)
+		{
+			printf("Resending to from %s to %s\n", unsent[i].msg.src_ip, unsent[i].msg.dest_ip);
+			gr = gotFreshRoute(unsent[i].msg.dest_ip, staleness); //Check to see
+			if(gr != -1)
+			{
+				sendAPPmsg(unsent[i].msg, gr);
+			}
+			unsent_num--;
+			unsent[i].empty = 0; //Empty the slot
+		}
+	}
+
+	return 0;
+}
+
+int APPmsgBackup(struct ODRmsg app)
+{
+	int i;
+	for(i = 0; i < MAX_UNSENT; i++)
+	{
+		if(unsent[i].empty == 0)
+		{
+			unsent[i].msg = app;
+			printf("Unsent message for %s\n", unsent[i].msg.dest_ip);
+			unsent[i].empty = 1;
+			unsent_num++;
+			printf("Placing message in UNSENT queue, %d unsent message(s)\n", unsent_num);
+			return 0;
+		}
+	}
+	
+	printf("UNSENT buffer full\n");
+	return -1;
+}
+
+void unsent_init()
+{
+	int i;
+	for(i = 0; i < MAX_UNSENT; i++)
+	{
+		unsent[i].empty = 0;
 	}
 }
 
@@ -670,4 +767,19 @@ void printHW(char* ptr)
 	{
 		printf("%.2x%s", *ptr++ & 0xff, (i == 1) ? " " : ":");
 	} while (--i > 0);
+}
+
+
+void printAPPmsg(struct ODRmsg msg)
+{
+	printf("Printing APP msg: \n");
+	printf("Type: %d\n", msg.type);
+	//printf("SrcIP: %s\n", msg.src_ip[16]);
+	//printf("DestIP: %s\n", msg.dest_ip[16]);
+	printf("SrcPort: %d\n", msg.app.srcport);
+	printf("DestPort: %d\n", msg.app.destport);
+	printf("Msgsz: %d\n", msg.app.msgsz);
+	printf("Message: %s\n", msg.app.message);
+	printf("Hop Count: %d\n", msg.hopcount);
+	printf("Force: %d\n", msg.forced_discovery);
 }
