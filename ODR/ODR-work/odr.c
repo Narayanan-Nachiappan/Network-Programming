@@ -149,7 +149,7 @@ int main(int argc, char **argv)
 			//su = (struct sockaddr_un*) sa;			
 			//err_msg("%s",temp.sa_data);
 			//err_msg("%d",addrlen);
-
+			printf("Recv %s\n", rcvline);
 			processAPPmsg(rcvline, &temp);
 		}
 		if(FD_ISSET(pfsock, &rset))
