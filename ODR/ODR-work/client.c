@@ -22,7 +22,7 @@ int main(int argc, char **argv){
 
 	int	sockfd;
 	int	tempfd;
-	char buf[24] = "GROUP15_";
+	char buf[24] = "G_";
 	char vmAddr[INET_ADDRSTRLEN];
 	char hostName[SIZE];
 	struct sockaddr_un	cliaddr, servaddr;

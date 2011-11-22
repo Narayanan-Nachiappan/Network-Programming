@@ -40,7 +40,6 @@ int main(int argc, char **argv)
 	int 					i, j;
 	int 					protocol, maxfdp1;
 	fd_set					rset;
-	//char					address[16];
 	char					rcvline[MAXLINE];
 	struct hostent			*host;
 
@@ -51,6 +50,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	
+	//Initialize tables
 	staleness  = atoi(argv[1]);
 	unsent_init();
 	rtable_init();
@@ -66,15 +66,11 @@ int main(int argc, char **argv)
 	printf( "Canonical IP: %s\n", canonical);
 
 	printf("Finding interfaces\n");
+	//Save information about the interfaces (MAC address, index, and IP address) for future use)
 	for (i = 0, hwahead = hwa = Get_hw_addrs(); hwa != NULL && i < MAX_INTERFACES; hwa = hwa->hwa_next, i++)
 	{
 		if(strncmp(hwa->if_name, "eth0", 4) != 0 && strncmp(hwa->if_name, "lo", 2) != 0)
 		{
-			/*
-			for(j = 0; j < 6; j++)
-			{
-				interfaces[i].if_haddr[j] = hwa->if_haddr[j];
-			}*/
 			memcpy((void*)interfaces[i].if_haddr, (void*)hwa->if_haddr, 6);
 			interfaces[i].if_index = hwa->if_index;
 			sa = hwa->ip_addr;
@@ -121,10 +117,9 @@ int main(int argc, char **argv)
 	}
 
 	FD_ZERO(&rset);
-	printf("Bound appsock\n");
 	for ( ; ; ) 
 	{
-
+		//select() set up
 		FD_SET(pfsock, &rset);
 		FD_SET(appsock, &rset);
 		maxfdp1 = max(pfsock, appsock) + 1;
@@ -138,7 +133,6 @@ int main(int argc, char **argv)
 		if(FD_ISSET(appsock, &rset))
 		{
 			printf("appsock is ready\n");
-			//msg_recv(appsock, message, address, port);
 			addrlen = sizeof(sckadr);
 			
 			if(recvfrom(appsock, rcvline, MAXLINE, 0, &temp, &addrlen) < 0)
@@ -226,11 +220,9 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	address = malloc(16);
 	message = malloc(30);
 	temp = malloc(50);
-
 	
 	err_msg("#############");
 	printf("Client UNIX PATH %s\n", sa->sa_data);
-	//printf("Parse %s\n", sa->sun_family);
 		err_msg("#############");
 	char temp2[20];
 	strncpy(temp2, sa->sa_data, 20);
@@ -243,25 +235,30 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	printf(" port %d\n", srcport);
 	//Get the port number from the sun_path
 	
-	printf("Demux Table: %d %s\n", srcport, sa->sa_data);
-	found = inDemuxTable(srcport);
-	if(found != NULL)
-		updatetime(found); //update the entry
+	if(srcport != 0)
+	{
+		printf("Demux Table: %d %s\n", srcport, sa->sa_data);
+		found = inDemuxTable(srcport);
+		if(found != NULL)
+			updatetime(found); //update the entry
+		else
+			addNewDemux(srcport, sa->sa_data); //make a new entry*/
+	}
 	else
-		addNewDemux(srcport, sa->sa_data); //make a new entry*/
-	
+		printf("Peer process is a server\n");
 	//Read string
 	
-	strncpy(address, strtok(rcvline, " "), 16);
+	strncpy(address, strtok(rcvline, "-"), 16);
 	printf("address %s\n", address);
-	strcpy(temp, strtok(NULL, " "));
+	strcpy(temp, strtok(NULL, "-"));
 	printf("temp %s\n", temp);
 	sscanf(temp, "%d", &destport);
 	printf("port %d\n", destport);
-	strcpy(message, strtok(NULL, " "));
-	strcat(message, "\0");
+	strcpy(message, strtok(NULL, "-"));
+	message[strlen(message)] = '\0';
+	//strcat(message, "\0");
 	printf("message %s\n", message);
-	strcpy(temp, strtok(NULL, " "));
+	strcpy(temp, strtok(NULL, "-"));
 	printf("temp %s\n", temp);
 	sscanf(temp, "%d", &flag);
 	printf("flag %d\n", flag);
@@ -323,11 +320,6 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 		else
 			sendAPPmsg(appmsg, gr);
 	}
-	
-	//sendAPPmsg(&app);
-	//free(address);
-	//free(message);
-	//free(temp);
 
 	return 0;
 }
@@ -495,7 +487,6 @@ int waitforRREP(char *dest)
 int sendAPPmsg(struct ODRmsg app, int route)
 {
 	//Get the index from the routing table, use it to find the right interface;
-	//printf("??? %s %s\n", app.src_ip, app.dest_ip);
 	app.type = htons(2);
 	app.hopcount++;
 	printAPPmsg(app);
@@ -569,15 +560,19 @@ int sendRREP(struct ODRmsg RREP, int out_if, int route, int force)
 int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 {
 	int i;
-	struct hostent *h1, *h2;
+	struct hostent *h;
+	struct sockaddr_in tempaddr;
+	struct in_addr **pptr;
 	struct sockaddr_ll socket_address;
 	void* buffer = (void*)malloc(ETH_FRAME_LEN);
 	unsigned char* etherhead = buffer;
 	struct ODRmsg *data = buffer + 14;
 	struct ethhdr *eh = (struct ethhdr *)etherhead; 
+	char hostName[10];
 
 	unsigned char src_mac[6], dest_mac[6];
 	
+	//Set the source and destination MAC address
 	for(i = 0; i < 6; i++)
 	{
 		src_mac[i] = interfaces[out_if].if_haddr[i];
@@ -632,21 +627,31 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 	}
 	else
 	{
-		/*
-		h1 = gethostbyaddr(msg.src_ip, sizeof(msg.src_ip), AF_INET);
-		h2 = gethostbyaddr(msg.dest_ip, sizeof(msg.dest_ip), AF_INET);
-		if(h1 == NULL )
-			printf("h1 == NULL\n");
-		if(h2 == NULL)
-			printf("h2 == NULL\n");*/
-		
-		printf("\nODR at node %s: sending frame hdr - src: %s  dest: ", name, name);
+		//print out information about the sent packet
+		bzero(&tempaddr, sizeof(tempaddr));
+		tempaddr.sin_family = AF_INET;
+
+		if (inet_pton(AF_INET, msg.src_ip, &tempaddr.sin_addr) <= 0){
+		err_msg("inet_pton error for %s", msg.src_ip);
+		}
+		pptr = &tempaddr.sin_addr;
+		h = gethostbyaddr(pptr, sizeof(pptr), AF_INET);
+
+		strcpy(hostName, h->h_name);
+
+		if (inet_pton(AF_INET, msg.dest_ip, &tempaddr.sin_addr) <= 0){
+		err_msg("inet_pton error for %s", msg.dest_ip);
+		}
+
+		pptr = &tempaddr.sin_addr;
+		h = gethostbyaddr(pptr, sizeof(pptr), AF_INET);
+		printf("\nODR at node %s: sending frame hdr - src: %s,  dest: ", name, name);
 		printHW(buffer);
-		printf("\nODR msg payload - message: %s ", msg.app.message);
-		printf("type: %d\n", htons(msg.type));
-		//printf("src: %s  ", h1->h_name);
-		//printf("dest: %s\n", h2->h_name);
-		
+		printf("\nODR msg payload - message: %s, ", msg.app.message);
+		printf("type: %d, ", ntohs(msg.type));
+		printf("src: %s, ", hostName);
+		printf("dest: %s\n", h->h_name);
+
 		return 0;
 	}
 }
@@ -663,7 +668,7 @@ int sendtoDest(struct ODRmsg msg) //FOR APPMSG ONLY!
 	dest = inDemuxTable(ntohs(msg.app.destport));
 	if(dest != NULL)
 	{
-		bzero(&su, SUN_LEN(su));
+		bzero(&su, sizeof(su));
 		su.sun_family = AF_LOCAL;
 		strncpy(su.sun_path, dest->sun_path, strlen(dest->sun_path));
 		strcat(su.sun_path, "\0");

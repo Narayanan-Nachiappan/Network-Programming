@@ -12,13 +12,13 @@ int msg_send(int sockfd, char* address, int destport, char* message, int flag)
 	sendline[0]='\0';
 	struct sockaddr_un su;
 	strncat(sendline, address, 16);
-	strcat(sendline, " ");
+	strcat(sendline, "-");
 	sprintf(port, "%d", destport);
 	strcat(sendline, port);
 	err_msg("15");
-	strcat(sendline, " ");
+	strcat(sendline, "-");
 	strncat(sendline, message, strlen(message) );
-	strcat(sendline, " ");
+	strcat(sendline, "-");
 	sprintf(flagstr, "%d", flag);
 	err_msg("20");
 	strcat(sendline, flagstr);
@@ -28,7 +28,7 @@ int msg_send(int sockfd, char* address, int destport, char* message, int flag)
 	err_msg("25");
 	err_msg("%s",su.sun_path);
 	
-	printf("Sending: %s, size: %d\n", sendline, sizeof(sendline));
+	printf("Sending: %s\n", sendline);
 	if(sendto(sockfd, (void *)sendline, sizeof(sendline), 0, (struct sockaddr*) &su, sizeof(struct sockaddr)) < 0)
 	{
 		printf("sendto error: %d %s\n", errno, strerror(errno));

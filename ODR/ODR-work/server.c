@@ -24,7 +24,7 @@ int port;
 //	dg_send_recv_srv(sockfd,"128.9.1.1","Message",444444,1);
 msg_recv(sockfd,message,address,&port,2);
 time_t ticks;
-snprintf(time, sizeof(time), "%.24s\r\n", ctime(&ticks));
+snprintf(time, sizeof(time), "%.24s", ctime(&ticks));
 err_msg("%s",address);
 err_msg("%d",port);
 msg_send(sockfd,address,port,time,0);
