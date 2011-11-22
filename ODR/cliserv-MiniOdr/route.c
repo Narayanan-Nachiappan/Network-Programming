@@ -151,7 +151,7 @@ void rtable_add(struct route entry,int index)
 {
 	routing_table[index]=entry;
 }
-
+/*
 int main(int argc,char **argv){
 	char ip[16];
 	char hop[6];
@@ -187,4 +187,4 @@ int main(int argc,char **argv){
 		}
 		rtable_display();
 	  }
-}
+}*/

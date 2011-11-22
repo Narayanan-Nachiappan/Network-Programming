@@ -26,7 +26,7 @@ int msg_send(int sockfd, char* address, int destport, char* message, int flag)
 	su.sun_family = AF_LOCAL;
 	strcpy(su.sun_path, ODR_SUNPATH);
 	err_msg("25");
-	
+	err_msg("%s",su.sun_path);
 	if(sendto(sockfd, (void *)sendline, sizeof(sendline), 0, (struct sockaddr*) &su, sizeof(struct sockaddr)) < 0)
 	{
 		printf("sendto error: %d %s\n", errno, strerror(errno));

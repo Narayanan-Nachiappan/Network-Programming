@@ -61,14 +61,6 @@ struct ODRmsg
 	struct	payload	app;
 };
 
-struct ethframe
-{
-	char src[6];
-	char dest[6];
-	int protocol;
-	struct ODRmsg data;
-};
-
-struct demux *headdemux, *lastdemux;
-int dtablesize;
+struct demux 			*headdemux, *lastdemux;
+int 					dtablesize;
 struct route			routing_table[MAX_ROUTES];
