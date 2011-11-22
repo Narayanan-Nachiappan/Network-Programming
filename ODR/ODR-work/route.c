@@ -8,7 +8,7 @@ struct route newRoute(char* address, char* haddr, int index, int hops)
 	struct route r;
 
 	strncpy(r.ip, address, 16);
-	strncpy(r.nexthop, haddr, 6);
+	memcpy((void*)r.nexthop, (void*)haddr, 6);
 	r.index = index;
 	r.hops = hops;
 	r.timestamp = time(NULL);
@@ -39,7 +39,10 @@ int findSlot()
 		return freeslot - 1;
 	}
 	else
+	{
+		printf("Routing table is full! In theory, this should never happen!\n");
 		return -1;
+	}
 }
 
 int gotFreshRoute(char *address, int staleness)
@@ -51,7 +54,7 @@ int gotFreshRoute(char *address, int staleness)
 	
 	i = findInTable(address);
 	
-	if(i > 0)
+	if(i >= 0)
 	{
 		if(routing_table[i].timestamp == 0)
 		{	
@@ -85,22 +88,39 @@ int updateTable(char* address, char* haddr, int index, int hops,int routediscove
 	int i;
 	
 	i = findInTable(address);
-	if((i == findInTable(address)) > 0) //If it's in the table, update it
+	
+	if(i == -1) //If it's not in the table, it's new. Find a new slot
 	{
-		if(routediscovery==1){
-			strncpy(routing_table[i].nexthop, haddr, 6);
+		printf("New route\n");
+		i = findSlot();
+		if(i != -1)
+		{
+			routing_table[i] = newRoute(address, haddr, index, hops);
+			return 0;
+		}
+		return -1;
+	}
+		
+	if(i != -1) //if it's in the table, update it
+	{
+		printf("Updating table for destination %s\n", address);
+		if(routediscovery == 1)
+		{
+			printf("Force update\n");
+			memcpy((void*)routing_table[i].nexthop, (void*)haddr, 6);
 			routing_table[i].index = index;
 			routing_table[i].hops = hops;
 			routing_table[i].timestamp = time(NULL);
 		}
 		else if(routing_table[i].hops > hops)
 		{
-			strncpy(routing_table[i].nexthop, haddr, 6);
+			memcpy((void*)routing_table[i].nexthop, (void*)haddr, 6);
 			routing_table[i].index = index;
 			routing_table[i].hops = hops;
 			routing_table[i].timestamp = time(NULL);
 		}
-		
+		else
+			printf("This route is inferior - update cancelled\n");		
 	}
 
 }
@@ -114,7 +134,7 @@ void rtable_init()
 		routing_table[i].ip[0] = '\0';
 		routing_table[i].nexthop[0] = '\0';
 		routing_table[i].index = 0;
-		routing_table[i].hops = 0;
+		routing_table[i].hops = 100;
 		routing_table[i].timestamp = 0;
 	}
 }

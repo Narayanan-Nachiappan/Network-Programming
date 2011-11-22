@@ -7,8 +7,8 @@ void dtable_init()
 	dtablesize = 1;
 	//put the server in the table
 	//strncpy(sunpath_root, SUNPATH_ROOT, sizeof(SUNPATH_ROOT));
-	headdemux->port = TIME_PORT;
-	strncpy(headdemux->sun_path, TIME_SERV_SUNPATH, sizeof(TIME_SERV_SUNPATH));
+	headdemux->port = SERVER_UNIX_PORT;
+	strncpy(headdemux->sun_path, SERVER_UNIX_DG_PATH, sizeof(SERVER_UNIX_DG_PATH));
 	headdemux->timestamp = time(NULL);
 	printf("Demux Table: Added <%d, %s>\n", headdemux->port, headdemux->sun_path);
 	lastdemux = headdemux;
@@ -34,7 +34,8 @@ void addNewDemux(int port, char* sp)
 	//printf("Sunpath_root: %s,  Portstring %s\n", sunpath_root, portstring);
 	
 	newentry->port = port;
-	strncpy(newentry->sun_path, sp, strlen(sp));
+	strncpy(newentry->sun_path, sp, 20);
+	
 	newentry->next = NULL;
 	newentry->timestamp = time(NULL);
 	addnew(newentry);

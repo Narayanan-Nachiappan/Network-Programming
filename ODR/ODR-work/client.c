@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <setjmp.h>
-
+#include "random.c"
 #define SIZE 1024
 
 jmp_buf env;
@@ -37,7 +37,7 @@ int main(int argc, char **argv){
 	bzero(&cliaddr, sizeof(cliaddr));		/* bind an address for us */
 	cliaddr.sun_family = AF_LOCAL;
 	
-	int random = ((rand() % 45535) +15000);
+	int random =randomgenerator();
 	char temp[14];
 	sprintf(temp, "%d_XXXXXX", random);
 	strcat(buf, temp);

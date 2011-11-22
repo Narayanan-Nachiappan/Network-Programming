@@ -32,17 +32,18 @@ int main(int argc, char **argv)
 {
 	struct ODRmsg			*msg;
 	struct hwa_info			*hwa, *hwahead;
-	struct sockaddr_un 		su;
-	struct sockaddr			*sa;
 	socklen_t				addrlen;
+	struct sockaddr_un 		su;
+	struct sockaddr		temp;
+	struct  sockaddr_un	sckadr;
+	struct sockaddr *sa;
 	int 					i, j;
 	int 					protocol, maxfdp1;
 	fd_set					rset;
 	//char					address[16];
 	char					rcvline[MAXLINE];
 	struct hostent			*host;
-	struct sockaddr		temp;
-	struct  sockaddr_un	sckadr;
+
 	
 	if(argc < 2)
 	{
@@ -226,11 +227,16 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	message = malloc(30);
 	temp = malloc(50);
 
+	
 	err_msg("#############");
 	printf("Client UNIX PATH %s\n", sa->sa_data);
 	//printf("Parse %s\n", sa->sun_family);
 		err_msg("#############");
-	temp = strtok(sa->sa_data, "_");
+	char temp2[20];
+	strncpy(temp2, sa->sa_data, 20);
+	printf("Sun path: %s\n", temp2);
+	
+	temp = strtok(temp2, "_");
 	printf("Standard Prefix %s\n", temp);
 	temp = strtok(NULL, "_");
 	srcport=atoi(temp);
@@ -242,7 +248,7 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	if(found != NULL)
 		updatetime(found); //update the entry
 	else
-		addNewDemux(srcport, sa->sa_data); //make a new entry
+		addNewDemux(srcport, sa->sa_data); //make a new entry*/
 	
 	//Read string
 	
@@ -319,9 +325,9 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	}
 	
 	//sendAPPmsg(&app);
-	free(address);
-	free(message);
-	free(temp);
+	//free(address);
+	//free(message);
+	//free(temp);
 
 	return 0;
 }
@@ -657,16 +663,18 @@ int sendtoDest(struct ODRmsg msg) //FOR APPMSG ONLY!
 	dest = inDemuxTable(ntohs(msg.app.destport));
 	if(dest != NULL)
 	{
+		bzero(&su, SUN_LEN(su));
 		su.sun_family = AF_LOCAL;
 		strncpy(su.sun_path, dest->sun_path, strlen(dest->sun_path));
-		printf("Destination sun_path: %s\n", dest->sun_path);
+		strcat(su.sun_path, "\0");
+		printf("Destination sun_path: %s\n", su.sun_path);
 		
-		strncpy(sendline, msg.app.message, ntohs(msg.app.msgsz));
+		strncpy(sendline, msg.src_ip, 16);
 		strcat(sendline, " ");
-		sprintf(port, "%d", ntohs(msg.app.destport));
+		sprintf(port, "%d", ntohs(msg.app.srcport));
 		strcat(sendline, port);
 		strcat(sendline, " ");
-		strncat(sendline, msg.src_ip, 16);
+		strncat(sendline, msg.app.message, ntohs(msg.app.msgsz));
 		strcat(sendline, "\0");
 		
 		printf("Sending message: %s\n", sendline);

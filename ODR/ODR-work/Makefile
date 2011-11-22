@@ -43,4 +43,4 @@ odr: odr.o demux.o route.o get_hw_addrs.o
 
 
 clean:
-	rm -f domainclient.o domainserver.o domainclient domainserver *.bak client.o client.bak server.o server.bak odr odr.o demux.o route.o
+	rm -f domainclient.o domainserver.o domainclient domainserver *.bak client client.o client.bak server server.o server.bak odr odr.o demux.o route.o
