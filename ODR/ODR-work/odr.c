@@ -159,15 +159,15 @@ int main(int argc, char **argv)
 			
 			printf("Received message: \n");
 			printf("From: ");
-			printHW(rcvline);
+			memcpy((void*)neighbor, (void*)rcvline + ETH_ALEN, ETH_ALEN);
+			printHW(neighbor);
 			
-			if(!toss(rcvline))
+			if(!toss(neighbor))
 			{
 				msg = rcvline + 14;
 
-				memcpy((void*)neighbor, (void*)rcvline + ETH_ALEN, ETH_ALEN);
 				printf(" To: ");
-				printHW(neighbor);
+				printHW(rcvline);
 				printf("\n");
 				processODRmsg(msg, sa);
 			}
@@ -284,10 +284,12 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	strncpy(appmsg.app.message, message, strlen(message));
 	appmsg.app.msgsz = htons(strlen(message));
 	appmsg.forced_discovery = htons(flag);
+	printf("1Address: %s, %s, %s\n", appmsg.src_ip, appmsg.dest_ip, canonical);
 	
 	strncpy(msg.src_ip, canonical, 16);
 	strncpy(msg.dest_ip, address, 16);
 	msg.hopcount = htons(0);
+	printf("2Address: s -%s d- %s\n", msg.src_ip, msg.dest_ip);
 	
 	if(flag == 1) //Force Route Discovery
 	{
@@ -303,7 +305,7 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	}
 	else
 	{
-		printAPPmsg(appmsg);
+		//printAPPmsg(appmsg);
 		gr = gotFreshRoute(msg.dest_ip, staleness);
 		if(gr == -1)
 		{
@@ -335,6 +337,7 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 	sall = (struct sockaddr_ll *) sa;
 	
 	msg = *m;
+	printf("3Address: s -%s d- %s\n", msg.src_ip, msg.dest_ip);
 	type = ntohs(msg.type);
 	
 	if(type == 0)
@@ -342,7 +345,7 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		printf("Received RREQ\n");
 		
 		//Update the routing table with information about the neighbor
-		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery));
+		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, htons(msg.hopcount), htons(msg.forced_discovery));
 		
 		//If we're the destination, send an RREP
 		if(isDestination(msg.dest_ip))
@@ -385,14 +388,20 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		printf("Received RREP\n");
 		
 		//Update the table
-		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery)); //src_ip or dest_ip?
+		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, htons(msg.hopcount), htons(msg.forced_discovery)); //src_ip or dest_ip?
 		
 		if(!isDestination(msg.dest_ip))
 		{
 			//If you have a route, forward the RREP
 			gr = gotFreshRoute(msg.dest_ip, staleness);
 			if(gr != -1)
+			{
+				strncpy(RREP.src_ip, msg.src_ip, 16);
+				strncpy(RREP.dest_ip, msg.dest_ip, 16);
+				RREP.hopcount = routing_table[gr].hops;
+				RREP.forced_discovery = msg.forced_discovery;
 				sendRREP(RREP, routing_table[gr].index, gr, msg.forced_discovery);
+			}
 			else
 				printf("No route?\n");
 		}
@@ -404,7 +413,7 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		printf("Received application payload\n");
 		printAPPmsg(msg);
 		//Update the table
-		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery)); //src_ip or dest_ip?
+		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, htons(msg.hopcount), htons(msg.forced_discovery)); //src_ip or dest_ip?
 		
 		//If this is the destination of the app payload, send it to the peer process
 		if(isDestination(msg.dest_ip))
@@ -416,7 +425,8 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		{
 			//Find a route
 			gr = gotFreshRoute(msg.dest_ip, staleness);
-			if(gr != -1)
+			printf("gr = %d\n");
+			if(gr == -1)
 			{
 				//If there's no route, send an RREQ and stick the message in the UNSENT buffer
 				strncpy(RREQ.src_ip, canonical, 16);
