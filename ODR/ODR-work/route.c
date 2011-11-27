@@ -152,17 +152,12 @@ void rtable_display()
 {
 	int i;
 	//freeslot = 0;
-	err_msg("__________________________________________________________");
 	err_msg("************************ROUTING TABLE**************************************");
-	err_msg("__________________________________________________________");
 	err_msg("IP\t\tNEXTHOP\tINDEX\tHOPCOUNT\tTIMESTAMP");
 	for(i = 0; i < MAX_ROUTES; i++)
 	{
 		err_msg("%s\t%s\t%d\t%d\t\t%d",routing_table[i].ip,routing_table[i].nexthop,routing_table[i].index,routing_table[i].hops,routing_table[i].timestamp );
-		err_msg("\n");
 	}
-	err_msg("__________________________________________________________");
-	err_msg("__________________________________________________________");
 }
 
 void rtable_add(struct route entry,int index)
