@@ -351,7 +351,7 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		}
 		else
 		{
-			gr = gotFreshRoute(msg.src_ip);
+			gr = gotFreshRoute(msg.src_ip, staleness);
 			if(gr != -1 && routing_table[gr].hops > ntohs(msg.hopcount))
 			{
 				printf("Setting RREPsend\n");
