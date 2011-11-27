@@ -378,11 +378,10 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		{
 			//Check for a route in the table
 			gr = gotFreshRoute(msg.dest_ip, staleness);
-			if(gr == -1 || (ntohs(msg.forced_discovery) == 1) || RREPsend == 1)
-				sendRREQ(msg, sall->sll_ifindex, msg.forced_discovery, htons(RREPsend));
+			if(gr == -1 || (ntohs(msg.forced_discovery) == 1))
+				sendRREQ(msg, sall->sll_ifindex, msg.forced_discovery, htons(0));
 			//if(gr == -1 || (msg.forced_discovery == 1)) 			//If there's no route in the table, send an RREQ
 				//sendRREQ(msg, sall->sll_ifindex, msg.forced_discovery, 0);
-				
 			else //If there's a fresh route, send an RREP
 			{
 				if(ntohs(msg.RREPsent) == 0)
@@ -393,6 +392,9 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 					RREP.hopcount = htons(routing_table[gr].hops + 1);
 					RREP.forced_discovery = msg.forced_discovery;
 					sendRREP(RREP, sall->sll_ifindex, -1, msg.forced_discovery);
+					
+					if(RREPsend == 1)
+						sendRREQ(msg, sall->sll_ifindex, msg.forced_discovery, htons(1));
 				}
 				else
 					printf("RREP already sent, do nothing\n");
@@ -675,7 +677,7 @@ int sendtoDest(struct ODRmsg msg) //FOR APPMSG ONLY!
 		
 		strncpy(sendline, msg.src_ip, 16);
 		strcat(sendline, "-");
-		sprintf(port, "%d", ntohs(msg.app.destport));
+		sprintf(port, "%d", ntohs(msg.app.srcport));
 		//sprintf(port, "%d", msg.app.srcport);
 		strcat(sendline, port);
 		strcat(sendline, "-");
