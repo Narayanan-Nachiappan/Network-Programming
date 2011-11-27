@@ -50,23 +50,23 @@ int msg_recv(int sockfd, char* message, char* address, int* port)
 		return -1;
 	}
 
-	result = strtok( recvline, " " );
+	result = strtok( recvline, "-" );
 
-   strcpy(address,result);
+    strcpy(address,result);
     err_msg( "%s", address );
 	
-	result = strtok( NULL, " ");
+	result = strtok( NULL, "-");
 	
 	int portnum=atoi(result);
 	*port=portnum;
     err_msg( "%d", *port );
 	
-	result = strtok( NULL, " ");
+	result = strtok( NULL, "-");
 	message=result;
     err_msg( "%s", message );
 	
-	result = strtok( NULL, " ");
-	err_msg( "%s", result );
+	//result = strtok( NULL, "-");
+	//err_msg( "%s", result );
 	err_msg("###End of msg rev");
 	
 	return 0;

@@ -318,7 +318,7 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 
 int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 {
-	int gr = 0, s = 0, type;
+	int gr = 0, s = 0, type, RREPsend = 0;
 	char temp[16];
 	struct demux *found;
 	struct sockaddr_ll *sall;
@@ -334,6 +334,24 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 	if(type == 0)
 	{
 		printf("Received RREQ\n");
+		
+		//continue to flood the RREQ it received if the RREQ
+		//source node we were unaware of, or the RREQ gives it a more efficient route than it knew of back to the source node
+		gr = findInTable(msg.src_ip);
+		if(gr == -1)
+		{
+			printf("Setting RREPsend\n");
+			RREPsend = 1;
+		}
+		else
+		{
+			gr = gotFreshRoute(msg.src_ip);
+			if(gr != -1 && routing_table[gr].hops > ntohs(msg.hopcount))
+			{
+				printf("Setting RREPsend\n");
+				RREPsend = 1;
+			}
+		}
 		
 		//Update the routing table with information about the neighbor
 		printf("Updating table from RREQ: Destination: %s, Index: %d, Hopcount: %d, Force :%d\n", msg.src_ip, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery));
@@ -360,8 +378,8 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		{
 			//Check for a route in the table
 			gr = gotFreshRoute(msg.dest_ip, staleness);
-			if(gr == -1 || (ntohs(msg.forced_discovery) == 1))
-				sendRREQ(msg, sall->sll_ifindex, msg.forced_discovery, htons(0));
+			if(gr == -1 || (ntohs(msg.forced_discovery) == 1) || RREPsend == 1)
+				sendRREQ(msg, sall->sll_ifindex, msg.forced_discovery, htons(RREPsend));
 			//if(gr == -1 || (msg.forced_discovery == 1)) 			//If there's no route in the table, send an RREQ
 				//sendRREQ(msg, sall->sll_ifindex, msg.forced_discovery, 0);
 				
@@ -369,7 +387,7 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 			{
 				if(ntohs(msg.RREPsent) == 0)
 				//if(msg.RREPsent == 0)
-				{
+				{						
 					strncpy(RREP.src_ip, msg.dest_ip, 16);
 					strncpy(RREP.dest_ip, msg.src_ip, 16);
 					RREP.hopcount = htons(routing_table[gr].hops + 1);
@@ -656,11 +674,11 @@ int sendtoDest(struct ODRmsg msg) //FOR APPMSG ONLY!
 		printf("Destination sun_path: %s\n", su.sun_path);
 		
 		strncpy(sendline, msg.src_ip, 16);
-		strcat(sendline, " ");
-		sprintf(port, "%d", ntohs(msg.app.srcport));
+		strcat(sendline, "-");
+		sprintf(port, "%d", ntohs(msg.app.destport));
 		//sprintf(port, "%d", msg.app.srcport);
 		strcat(sendline, port);
-		strcat(sendline, " ");
+		strcat(sendline, "-");
 		strncat(sendline, msg.app.message, ntohs(msg.app.msgsz));
 		//strncat(sendline, msg.app.message, msg.app.msgsz);
 		strcat(sendline, "\0");
