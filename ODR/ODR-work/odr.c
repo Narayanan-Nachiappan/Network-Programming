@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 	fd_set					rset;
 	char					rcvline[MAXLINE];
 	struct hostent			*host;
-
+	time_t					last_time;
 	
 	if(argc < 2)
 	{
@@ -170,6 +170,12 @@ int main(int argc, char **argv)
 			}
 			else
 				printf("Toss it!\n");
+				
+			if(difftime(last_time, time(NULL)) > staleness)
+			{
+				purge();
+				last_time = time(NULL);
+			}
 		}
 	}
 }
