@@ -46,12 +46,16 @@ int main(int argc, char **argv)
 	
 	if(argc < 2)
 	{
-		printf("Usage: odr staleness\n");
-		return -1;
+		//printf("Usage: odr staleness\n");
+		//return -1;
+		err_msg("No Staleness value provided, Using the default value 10");
+		staleness=10;
 	}
 	
 	//Initialize tables
+	else{
 	staleness  = atoi(argv[1]);
+	}
 	unsent_init();
 	rtable_init();
 	dtable_init();
@@ -234,6 +238,8 @@ int processAPPmsg(char *rcvline, struct sockaddr *sa)
 	temp = strtok(temp2, "_");
 	printf("Standard Prefix %s\n", temp);
 	temp = strtok(NULL, "_");
+printf("Port %s\n", temp);
+	
 	srcport=atoi(temp);
 	printf(" port %d\n", srcport);
 	//Get the port number from the sun_path
@@ -433,6 +439,9 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		printf("Received application payload\n");
 		//printAPPmsg(msg);
 		//Update the table
+		err_msg("##########");
+		err_msg("%d",ntohs(msg.app.srcport));
+		err_msg("##########");
 		printf("Updating table from app payload: Destination: %s, Index: %d, Hopcount: %d, Force :%d\n", msg.src_ip, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery));
 		updateTable(msg.src_ip, neighbor, sall->sll_ifindex, ntohs(msg.hopcount), ntohs(msg.forced_discovery)); //src_ip or dest_ip?
 		//updateTable(msg.src_ip, neighbor, sall->sll_ifindex, msg.hopcount, msg.forced_discovery);
@@ -442,6 +451,9 @@ int processODRmsg(struct ODRmsg *m, struct sockaddr *sa)
 		{
 			printf("Forwarding to peer process\n");
 			sendtoDest(msg);
+			err_msg("###########################3");
+			err_msg( "%d", ntohs(msg.app.srcport));
+				err_msg("###########################3");
 		}
 		else
 		{
@@ -678,7 +690,10 @@ int sendtoDest(struct ODRmsg msg) //FOR APPMSG ONLY!
 		strncpy(sendline, msg.src_ip, 16);
 		strcat(sendline, "-");
 		sprintf(port, "%d", ntohs(msg.app.srcport));
-		//sprintf(port, "%d", msg.app.srcport);
+		//sprintf(port, "%d", msg.app.srcport);\
+		err_msg("####################");
+					err_msg( "%d", (msg.app.srcport));
+							err_msg("####################");
 		strcat(sendline, port);
 		strcat(sendline, "-");
 		strncat(sendline, msg.app.message, ntohs(msg.app.msgsz));

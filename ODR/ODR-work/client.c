@@ -59,6 +59,7 @@ int main(int argc, char **argv){
 	struct in_addr **pptr;
 	char *message="TIME_REQUEST";
 	int menu = 0;
+	int port;
 	
 	do{
 		printf("Choose the vm node (1 to 10): ");
@@ -89,7 +90,7 @@ int main(int argc, char **argv){
 		} else {
 			msg_send(sockfd,vmAddr,SERVER_UNIX_PORT,message,1);
 		}
-	msg_recv(sockfd,message,vmAddr,SERVER_UNIX_PORT);
+	msg_recv(sockfd,message,vmAddr,&port);
 
 	} while(menu > 0);
 

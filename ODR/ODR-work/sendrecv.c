@@ -49,6 +49,9 @@ int msg_recv(int sockfd, char* message, char* address, int* port)
 		printf("recvfrom error: %d %s\n", errno, strerror(errno));
 		return -1;
 	}
+	err_msg("_______Message received _________");
+	err_msg("%s",recvline);
+	err_msg("_______________________________");
 
 	result = strtok( recvline, "-" );
 
@@ -56,8 +59,11 @@ int msg_recv(int sockfd, char* message, char* address, int* port)
     err_msg( "%s", address );
 	
 	result = strtok( NULL, "-");
+	err_msg( "%s", address );
 	
 	int portnum=atoi(result);
+	err_msg( "%d", portnum );
+	
 	*port=portnum;
     err_msg( "%d", *port );
 	
