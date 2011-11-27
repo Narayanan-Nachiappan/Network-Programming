@@ -77,7 +77,7 @@ int main(int argc, char **argv){
 		Inet_ntop(hptr->h_addrtype, *pptr, vmAddr, sizeof(vmAddr));
 
 		err_msg("%s Address: %s", vmName, vmAddr);
-		err_msg("client at node %s sending request to server at %s", hostName, vmName);
+		err_msg("client at node %s sending request to server at %s %d", hostName, vmName, time(NULL));
 
 		int i;
 		signal(SIGALRM, timeout);
@@ -89,7 +89,7 @@ int main(int argc, char **argv){
 		} else {
 			msg_send(sockfd,vmAddr,SERVER_UNIX_PORT,message,1);
 		}
-	msg_recv(sockfd,message,vmAddr,SERVER_UNIX_PORT,1);
+	msg_recv(sockfd,message,vmAddr,SERVER_UNIX_PORT);
 
 	} while(menu > 0);
 

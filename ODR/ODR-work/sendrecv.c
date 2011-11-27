@@ -15,17 +15,17 @@ int msg_send(int sockfd, char* address, int destport, char* message, int flag)
 	strcat(sendline, "-");
 	sprintf(port, "%d", destport);
 	strcat(sendline, port);
-	err_msg("15");
+	//err_msg("15");
 	strcat(sendline, "-");
 	strncat(sendline, message, strlen(message) );
 	strcat(sendline, "-");
 	sprintf(flagstr, "%d", flag);
-	err_msg("20");
+	//err_msg("20");
 	strcat(sendline, flagstr);
 	strcat(sendline, "\0");
 	su.sun_family = AF_LOCAL;
 	strcpy(su.sun_path, ODR_SUNPATH);
-	err_msg("25");
+	//err_msg("25");
 	err_msg("%s",su.sun_path);
 	
 	printf("Sending: %s\n", sendline);
@@ -38,21 +38,18 @@ int msg_send(int sockfd, char* address, int destport, char* message, int flag)
 	return 0;
 }
 
-int msg_recv(int sockfd, char* message, char* address, int* port,int cliserv)
+int msg_recv(int sockfd, char* message, char* address, int* port)
 {
 	char recvline[MAXLINE], *temp;
 	char *result;
 	 address_len=sizeof(sockaddress);
-	err_msg("43");
+	//err_msg("43");
 	if(recvfrom(sockfd, recvline, MAXLINE, 0, &sockaddress, &address_len) < 0)
 	{
 		printf("recvfrom error: %d %s\n", errno, strerror(errno));
 		return -1;
 	}
-err_msg("48");
 
-err_msg("%s",recvline);
-if(cliserv==2){
 	result = strtok( recvline, " " );
 
    strcpy(address,result);
@@ -70,7 +67,6 @@ if(cliserv==2){
 	
 	result = strtok( NULL, " ");
 	err_msg( "%s", result );
-}
 	err_msg("###End of msg rev");
 	
 	return 0;
