@@ -62,5 +62,5 @@ struct ODRmsg
 };
 
 struct demux 			*headdemux, *lastdemux;
-int 					dtablesize;
+int 					dtablesize, freeslot;
 struct route			routing_table[MAX_ROUTES];

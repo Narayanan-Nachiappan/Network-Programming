@@ -1,8 +1,5 @@
 #include "odr.h"
 
-static int freeslot;
-
-
 struct route newRoute(char* address, char* haddr, int index, int hops)
 {
 	struct route r;
@@ -104,7 +101,7 @@ int updateTable(char* address, char* haddr, int index, int hops,int routediscove
 	if(i != -1) //if it's in the table, update it
 	{
 		printf("Updating table for destination %s\n", address);
-		/*if(routediscovery == 1)
+		if(routediscovery == 1)
 		{
 			printf("Force update\n");
 			memcpy((void*)routing_table[i].nexthop, (void*)haddr, 6);
@@ -113,15 +110,15 @@ int updateTable(char* address, char* haddr, int index, int hops,int routediscove
 			routing_table[i].timestamp = time(NULL);
 		}
 		else if(routing_table[i].hops > hops)
-		{*/
+		{
 			memcpy((void*)routing_table[i].nexthop, (void*)haddr, 6);
 			routing_table[i].index = index;
 			routing_table[i].hops = hops;
 			routing_table[i].timestamp = time(NULL);
 			rtable_display();
-		/*}
+		}
 		else
-			printf("This route is inferior - %d hops < %d hops\n", routing_table[i].hops, hops);*/		
+			printf("This route is inferior - %d hops < %d hops\n", routing_table[i].hops, hops);		
 	}
 
 }
