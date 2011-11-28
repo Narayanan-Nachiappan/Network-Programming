@@ -17,7 +17,7 @@ int main(int argc, char **argv){
 	err_msg("Youngbum Kim - 107387376");
 	err_msg("Assignment #3");
 	err_msg("----------------------------------------");
-	err_msg("client.c");
+	err_msg("client_group15.c");
 	err_msg("----------------------------------------");
 
 	int	sockfd;
@@ -27,29 +27,29 @@ int main(int argc, char **argv){
 	char hostName[SIZE];
 	struct sockaddr_un	cliaddr, servaddr;
 
-	gethostname(hostName, sizeof(hostName));
+	gethostname(hostName, sizeof(hostName)); /* Get Host name for the node */
 
 	err_msg("Host Name: %s", hostName);
 	err_msg("----------------------------------------");
 
 	sockfd = Socket(AF_LOCAL, SOCK_DGRAM, 0);
 
-	bzero(&cliaddr, sizeof(cliaddr));		/* bind an address for us */
+	bzero(&cliaddr, sizeof(cliaddr));
 	cliaddr.sun_family = AF_LOCAL;
 	
-	int random =randomgenerator();
+	int random =randomgenerator(); /* Genarate the random number which will be used as port number */
 	char temp[14];
 	sprintf(temp, "%d_XXXXXX", random);
 	strcat(buf, temp);
-	tempfd = mkstemp(buf);
+	tempfd = mkstemp(buf); /* Add 6 random digits string for the sun_path */
 
 	strcpy(cliaddr.sun_path, buf);
 
 	err_msg("Temporary File name created by mkstemp()");
 	err_msg(buf);
 	err_msg("----------------------------------------");
-	unlink(buf);
-	Bind(sockfd, (SA *) &cliaddr, sizeof(cliaddr));
+	unlink(buf); /* remove the file ( the file will be automatically created when it binds ) */
+	Bind(sockfd, (SA *) &cliaddr, sizeof(cliaddr)); /* bind an address for us */
 
 	bzero(&servaddr, sizeof(servaddr));	/* fill in server's address */
 	servaddr.sun_family = AF_LOCAL;
@@ -60,9 +60,9 @@ int main(int argc, char **argv){
 	char *message="TIME_REQUEST";
 	int menu = 0;
 	int port;
-	
+	/* Enters an infinite loop */
 	do{
-		printf("Choose the vm node (1 to 10): ");
+		printf("Choose the vm node (1 to 10): "); /* Get user input for the destination node */
 		scanf("%d", &menu);
 		fflush(stdin);
 
@@ -71,7 +71,7 @@ int main(int argc, char **argv){
 			break;
 		}
 
-		char vmName[4];
+		char vmName[4]; /* Get the ip address and name for the destination node */
 		sprintf(vmName, "vm%d", menu);
 		hptr = gethostbyname(vmName);
 		pptr = (struct in_addr**) hptr->h_addr_list;
@@ -80,9 +80,9 @@ int main(int argc, char **argv){
 		err_msg("%s Address: %s", vmName, vmAddr);
 		err_msg("client at node %s sending request to server at %s %d", hostName, vmName, time(NULL));
 
-		int i;
+		int i; /* Time out mechanism */
 		signal(SIGALRM, timeout);
-
+		/* Retry to send only onetime after 5 seconds */
 		if (setjmp(env) == 0) {
 			alarm(5);
 			msg_send(sockfd,vmAddr,SERVER_UNIX_PORT,message,0);

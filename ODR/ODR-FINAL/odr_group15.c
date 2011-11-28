@@ -641,7 +641,7 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 		bzero(&tempaddr, sizeof(tempaddr));
 		tempaddr.sin_family = AF_INET;
 
-		if (inet_pton(AF_INET, msg.src_ip, &tempaddr.sin_addr) <= 0){
+		if (inet_pton(AF_INET, msg.src_ip, &tempaddr.sin_addr) <= 0){ /* Get IP address and name for the source node */
 		err_msg("inet_pton error for %s", msg.src_ip);
 		}
 		pptr = &tempaddr.sin_addr;
@@ -649,7 +649,7 @@ int sendPacket(struct ODRmsg msg, int out_if, int route, int broadcast)
 
 		strcpy(hostName, h->h_name);
 
-		if (inet_pton(AF_INET, msg.dest_ip, &tempaddr.sin_addr) <= 0){
+		if (inet_pton(AF_INET, msg.dest_ip, &tempaddr.sin_addr) <= 0){ /* get IP address and name for the destination node */
 		err_msg("inet_pton error for %s", msg.dest_ip);
 		}
 

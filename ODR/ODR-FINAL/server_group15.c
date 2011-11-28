@@ -17,7 +17,7 @@ int main(int argc, char **argv){
 	int					sockfd;
 	struct sockaddr_un	servaddr, cliaddr;
 	char hostName[SIZE];
-
+	/* Get Host name for the node */
 	gethostname(hostName, sizeof(hostName));
 
 	err_msg("Host Name: %s", hostName);
@@ -41,12 +41,13 @@ int main(int argc, char **argv){
 	bzero(&tempaddr, sizeof(tempaddr));
 	tempaddr.sin_family = AF_INET;
 
+	/* The server enters an infinite sequence of calls to msg_recv followed by msg_send */
 	while(1){
 
 		msg_recv(sockfd,message,address,&port);
 		time_t ticks;
 		snprintf(time, sizeof(time), "%.24s", ctime(&ticks));
-		
+		/* Get the ip address and name for the client node */
 		if (inet_pton(AF_INET, address, &tempaddr.sin_addr) <= 0){
 			err_quit("inet_pton error for %s", address);
 		}
