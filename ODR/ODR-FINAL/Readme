@@ -1,0 +1,146 @@
+CSE 533 - Network Programming
+Assignment 3
+
+Group# 15
+	Amelia Ellison - 107838108
+	Narayanan Nachiappan - 107996031
+	Youngbum Kim - 107387376
+
+----------------------------------------
+1. Command to use to obrain
+
+tar xvf cse533_group15_assignment3.tar
+
+To compile code:
+
+make
+
+----------------------------------------
+2. Source files
+
+/* client */
+client.c
+
+/*contains shared #define values for all client, server, and ODR*/
+constants.h
+
+/*contains demultiplexing table functions*/
+demux.c
+
+/* gets information on interfaces*/
+get_hw_addrs.c
+
+/*used by get_hw_addrs.c*/
+hw_addrs.h
+
+/* Makefile */
+Makefile
+
+/*odr*/
+odr.c
+
+/*contains #includes and structs for odr.c*/
+odr.h
+
+/*contains random number generator for client*/
+random.c
+
+/* This file */
+Readme.txt
+
+/*contains routing table functions*/
+route.c
+
+/* contains the msgsend() and msgrecv() functions */
+sendrecv.c
+
+/* server */
+server.c
+
+
+----------------------------------------
+
+SERVER
+
+
+----------------------------------------
+
+CLIENT
+
+
+-----------------------------------------
+ODR
+
+The ODR extracts a port number from the client's sun path. Sun paths are giving in the following form:
+G_XXXXX_YYYYYY
+where XXXXX is a random 5 digit nubmer and YYYYYY is a random 6 digit string. This ensures that all clients
+have a unique sunpath and a number that can be easily extracted and used as a port number.
+
+The ODR first usses get_hw_addrs to get information about the interfaces. It checks the name of the interface to make sure
+that eth0 and lo are not included. This information is kept in an array in an interface structure:
+
+struct interface
+{
+	char    if_haddr[6];	/* hardware address */
+	int     if_index;		/* interface index */
+	char	ip_addr[16];	/* IP address */
+};
+
+The ODR handles the routing between communicating hosts. When the source host sends an application message on the datagram
+socket, the ODR checks to see if it has routing information in its table to send the message. If it does, it forwards it to 
+the appropriate neighbor using its packet socket. The ODRs continue forwarding the request until it reaches its destination. 
+The destination ODR looks in its demultiplexing table to see which peer process should receive the message, then sends it to
+that peer process on its datagram socket. Messages are handled by filling information into the following structures:
+
+struct payload
+{
+	int 	srcport;
+	int 	destport;
+	int		msgsz;
+	char	message[30];
+};
+
+struct ODRmsg
+{
+	int				type;
+	char			src_ip[16];
+	char			dest_ip[16];
+	int 			broadcast_id;
+	int 			hopcount;
+	int				RREPsent;
+	int				forced_discovery;
+	struct	payload	app;
+};
+
+When the ODR receives an application message and it does not have a fresh route to use, it needs to send an RREQ,
+wait for an RREP, and then send the application message. However, while it is waiting for an RREP to come back for
+the message's destination, it must also handle other messages it might receive (RREQs from other ODRs, RREPs for other routes,
+new application messages). In order to handle this scenario, the ODR has an buffer to store application messages. When
+it sends the RREQ, it stores the application message in the Unsent buffer. Then it continues functioning normally. If it
+receives an RREP, it will update its routing table. Since the new information in the table may have made it possible to
+send an unsent message, it will attempt to send any messages in the buffer. Then it will return to normal operation.
+
+The demultiplexing table is a linked list. Its permanent entry, the server's well known-port and sunpath, is at the head of the
+list. Peer processes are added to the end. Old entries are purged every so often. The demultiplexing tables uses demux objects:
+
+struct demux
+{
+	int 			port;
+	char			sun_path[30];
+	time_t			timestamp;
+	struct demux	*next;
+};
+
+The routing table holds all relevant information about the current routing information known to the ODR. It is updated every time
+a packet is received. We "delete" an entry by making the timestamp zero. The routing table uses routes:
+
+struct route
+{
+	char			ip[16];
+	char 			nexthop[6];
+	int				index; 
+	int 			hops; 
+	time_t 			timestamp;
+};
+
+----------------------------------------
