@@ -4,43 +4,32 @@ LIBS = /home/courses/cse533/Stevens/unpv13e/libunp.a -lpthread
 FLAGS = -g -O2 -w
 CFLAGS = ${FLAGS} -I/home/courses/cse533/Stevens/unpv13e/lib
 
-all: domainclient domainserver client server
-
-#domainclient
-domainclient: domainclient.o
-	${CC} ${CFLAGS} -o domainclient domainclient.o ${LIBS}
-domainclient.o:
-	${CC} ${CFLAGS} -c domainclient.c
+all:  client_group15 server_group15 odr_group15
 
 
-####domain server
-domainserver: domainserver.o
-	${CC} ${CFLAGS} -o domainserver domainserver.o ${LIBS}
-domainserver.o:
-	${CC} ${CFLAGS} -c -o domainserver.o domainserver.c
 
+###client_group15
+client_group15: client_group15.o
+	${CC} ${CFLAGS} -o client_group15 client_group15.o ${LIBS}
+client_group15.o:
+	${CC} ${CFLAGS} -c client_group15.c
 
-###client
-client: client.o
-	${CC} ${CFLAGS} -o client client.o ${LIBS}
-client.o:
-	${CC} ${CFLAGS} -c client.c
-###server
-server: server.o
-	${CC} ${CFLAGS} -o server server.o ${LIBS}
-server.o:
-	${CC} ${CFLAGS} -c server.c
+###server_group15
+server_group15: server_group15.o
+	${CC} ${CFLAGS} -o server_group15 server_group15.o ${LIBS}
+server_group15.o:
+	${CC} ${CFLAGS} -c server_group15.c
 
-###miniodr
+###odr_group15
 route.o: route.c
 	${CC} ${CFLAGS} -c route.c
 demux.o: demux.c
 	${CC} ${CFLAGS} -c demux.c	
-odr.o: odr.c
-	${CC} ${CFLAGS} -c odr.c
-odr: odr.o demux.o route.o get_hw_addrs.o
-	${CC} ${FLAGS} -o odr odr.o demux.o route.o get_hw_addrs.o ${LIBS}
+odr_group15.o: odr_group15.c
+	${CC} ${CFLAGS} -c odr_group15.c
+odr_group15: odr_group15.o demux.o route.o get_hw_addrs.o
+	${CC} ${FLAGS} -o odr_group15 odr_group15.o demux.o route.o get_hw_addrs.o ${LIBS}
 
 
 clean:
-	rm -f domainclient.o domainserver.o domainclient domainserver *.bak client client.o client.bak server server.o server.bak odr odr.o demux.o route.o
+	rm -f  client_group15 client_group15.o client_group15.bak server_group15 server_group15.o server_group15.bak odr_group15 odr_group15.o demux.o route.o
