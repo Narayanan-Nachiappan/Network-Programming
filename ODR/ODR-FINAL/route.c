@@ -16,6 +16,7 @@ struct route newRoute(char* address, char* haddr, int index, int hops)
 int findInTable(char *address)
 {
 	int i;
+	//look for address in the table
 	for(i = 0; i < MAX_ROUTES; i++)
 	{
 		if(strncmp(address, routing_table[i].ip, 16) == 0)
@@ -29,7 +30,7 @@ int findInTable(char *address)
 int findSlot()
 {
 	int i;
-
+	//find a free slot
 	if(freeslot < MAX_ROUTES)
 	{
 		freeslot++;
@@ -48,9 +49,9 @@ int gotFreshRoute(char *address, int staleness)
 	struct sockaddr *sa;
 	char interface_addr[16];
 	time_t curr_time = time(NULL);
-	rtable_display();
 	i = findInTable(address);
 	
+	//if there is a route that is not stale, return it
 	if(i >= 0)
 	{
 		if(routing_table[i].timestamp == 0)
@@ -88,7 +89,6 @@ int updateTable(char* address, char* haddr, int index, int hops,int routediscove
 	
 	if(i == -1) //If it's not in the table, it's new. Find a new slot
 	{
-		printf("New route\n");
 		i = findSlot();
 		if(i != -1)
 		{
@@ -100,7 +100,6 @@ int updateTable(char* address, char* haddr, int index, int hops,int routediscove
 		
 	if(i != -1) //if it's in the table, update it
 	{
-		printf("Updating table for destination %s\n", address);
 		if(routediscovery == 1)
 		{
 			printf("Force update\n");
@@ -115,7 +114,6 @@ int updateTable(char* address, char* haddr, int index, int hops,int routediscove
 			routing_table[i].index = index;
 			routing_table[i].hops = hops;
 			routing_table[i].timestamp = time(NULL);
-			rtable_display();
 		}
 		else
 			printf("This route is inferior - %d hops < %d hops\n", routing_table[i].hops, hops);		
@@ -164,40 +162,3 @@ void rtable_add(struct route entry,int index)
 {
 	routing_table[index]=entry;
 }
-/*
-int main(int argc,char **argv){
-	char ip[16];
-	char hop[6];
-	int find_in_table,free_spot_in_table,hopcount,routediscovery;
-	struct route route_entry;
-	rtable_init();
-	rtable_display();
-	while(1){
-		err_msg("Enter IP to add");
-		scanf("%s",ip);
-		err_msg("Enter Hop ");
-		scanf("%s",hop);
-		err_msg("Enter Hop count");
-		scanf("%d",&hopcount);
-		err_msg("Enter Force update val");
-		scanf("%d",&routediscovery);
-		
-		find_in_table=findInTable(ip);
-		if(find_in_table ==-1){
-			free_spot_in_table=findFreeSpot();
-			if(free_spot_in_table==-1){
-				err_msg("Table full");
-			}
-			else{
-\
-				route_entry=newRoute(ip,hop,free_spot_in_table,hopcount);
-				rtable_add(route_entry,free_spot_in_table);
-					}
-			}
-		else{
-			updateTable(ip,hop,find_in_table,hopcount,routediscovery);
-
-		}
-		rtable_display();
-	  }
-}*/

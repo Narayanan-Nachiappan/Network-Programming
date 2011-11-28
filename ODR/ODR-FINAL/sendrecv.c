@@ -7,7 +7,6 @@ SA sockaddress;
 socklen_t address_len;
 int msg_send(int sockfd, char* address, int destport, char* message, int flag)
 {
-	err_msg("Inside MSG SEND");
 	char sendline[100], port[7], flagstr[3];
 	sendline[0]='\0';
 	struct sockaddr_un su;
@@ -15,19 +14,15 @@ int msg_send(int sockfd, char* address, int destport, char* message, int flag)
 	strcat(sendline, "-");
 	sprintf(port, "%d", destport);
 	strcat(sendline, port);
-	//err_msg("15");
 	strcat(sendline, "-");
 	strncat(sendline, message, strlen(message) );
 	strcat(sendline, "-");
 	sprintf(flagstr, "%d", flag);
-	//err_msg("20");
 	strcat(sendline, flagstr);
 	strcat(sendline, "\0");
 	su.sun_family = AF_LOCAL;
 	strcpy(su.sun_path, ODR_SUNPATH);
-	//err_msg("25");
-	err_msg("%s",su.sun_path);
-	
+
 	printf("Sending: %s\n", sendline);
 	if(sendto(sockfd, (void *)sendline, sizeof(sendline), 0, (struct sockaddr*) &su, sizeof(struct sockaddr)) < 0)
 	{
@@ -43,37 +38,28 @@ int msg_recv(int sockfd, char* message, char* address, int* port)
 	char recvline[MAXLINE], *temp;
 	char *result;
 	 address_len=sizeof(sockaddress);
-	//err_msg("43");
 	if(recvfrom(sockfd, recvline, MAXLINE, 0, &sockaddress, &address_len) < 0)
 	{
 		printf("recvfrom error: %d %s\n", errno, strerror(errno));
 		return -1;
 	}
-	err_msg("_______Message received _________");
-	err_msg("%s",recvline);
-	err_msg("_______________________________");
 
+	printf("Message received: %s\n", recvline);
 	result = strtok( recvline, "-" );
 
     strcpy(address,result);
-    err_msg( "%s", address );
+    err_msg( "Address: %s", address );
 	
 	result = strtok( NULL, "-");
-	err_msg( "%s", address );
 	
 	int portnum=atoi(result);
-	err_msg( "%d", portnum );
+	err_msg( "Port: %d", portnum );
 	
 	*port=portnum;
-    err_msg( "%d", *port );
 	
 	result = strtok( NULL, "-");
 	message=result;
-    err_msg( "%s", message );
-	
-	//result = strtok( NULL, "-");
-	//err_msg( "%s", result );
-	err_msg("###End of msg rev");
+    err_msg( "Message: %s", message );
 	
 	return 0;
 }
