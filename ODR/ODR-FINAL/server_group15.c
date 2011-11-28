@@ -11,7 +11,7 @@ int main(int argc, char **argv){
 	err_msg("Youngbum Kim - 107387376");
 	err_msg("Assignment #3");
 	err_msg("----------------------------------------");
-	err_msg("server.c");
+	err_msg("server_group15.c");
 	err_msg("----------------------------------------");
 
 	int					sockfd;
