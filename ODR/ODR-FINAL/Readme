@@ -7,7 +7,7 @@ Group# 15
 	Youngbum Kim - 107387376
 
 ----------------------------------------
-1. Command to use to obrain
+1. Command to use to obtain
 
 tar xvf cse533_group15_assignment3.tar
 
@@ -62,6 +62,18 @@ server.c
 
 SERVER
 
+
+##################README FOR SERVER##################
+
+--Server Binds to the domain socket identified by the unix path
+	SERVER_UNIX_DG_PATH which is defined in the constants.h file 
+
+	SERVER_UNIX_DG_PATH====>G_14567_SERVER
+
+--Then server enters an infinite loop which calls the msg_recv and gets blocked on receive
+till it receives a message on the domain socketfrom the local ODR.
+
+--When the message arrives it replies back to the ODR with the time . 
 
 ----------------------------------------
 
