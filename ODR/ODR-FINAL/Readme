@@ -9,7 +9,7 @@ Group# 15
 ----------------------------------------
 1. Command to use to obtain
 
-tar xvf cse533_group15_assignment3.tar
+tar xvzf cse533_group15_assignment3.tar.gz
 
 To compile code:
 
@@ -19,7 +19,7 @@ make
 2. Source files
 
 /* client */
-client.c
+client_group15.c
 
 /*contains shared #define values for all client, server, and ODR*/
 constants.h
@@ -37,7 +37,7 @@ hw_addrs.h
 Makefile
 
 /*odr*/
-odr.c
+odr_group15.c
 
 /*contains #includes and structs for odr.c*/
 odr.h
@@ -55,7 +55,7 @@ route.c
 sendrecv.c
 
 /* server */
-server.c
+server_group15.c
 
 
 ----------------------------------------
