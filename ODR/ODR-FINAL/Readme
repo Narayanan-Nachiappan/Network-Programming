@@ -63,8 +63,6 @@ server.c
 SERVER
 
 
-##################README FOR SERVER##################
-
 --Server Binds to the domain socket identified by the unix path
 	SERVER_UNIX_DG_PATH which is defined in the constants.h file 
 
