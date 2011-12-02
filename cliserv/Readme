@@ -11,13 +11,17 @@ Group# 15
 
 tar xvf cse533_group15_assignment2.tar
 
+To compile code:
+
+make
+
 ----------------------------------------
 2. Source files
 
 /* include helper functions and definitions of protocol */
 a.h
 
-/* */
+/* includes libraries and definitions for server */
 a2h.h
 
 /* client */
@@ -26,22 +30,22 @@ client.c
 /* client input */
 client.in
 
-/* */
+/* does the RTT and sliding window for server */
 dg_send_recv.c
 
-/* */
+/* gets information on interfaces*/
 get_ifi_info_pluc.c
 
 /* Makefile */
 Makefile
 
-/* */
+/* performs local subnet calculations */
 mask.c
 
 /* This file */
 Readme.txt
 
-/* */
+/* performs RTT functions*/
 rtt.c
 
 /* server */
@@ -50,13 +54,13 @@ server.c
 /* server input*/
 server.in
 
-/* */
+/* includes struct definitions for server */
 struct.c
 
-/* */
+/* used by get_ifi_info_plus */
 unpifiplus.h
 
-/* */
+/* used for RTT functions */
 unprtt.h
 
 ----------------------------------------
@@ -146,8 +150,10 @@ TEST CASES
 	-Set the ARQ value to '1' in the server.in file
 	
 -To test the Selective ARQ
+	-Set the RTT Timeout test value to '0' in the client.in file	
 	-Set the ARQ value to '2' in the client.in file
 	-Set the ARQ value to '2' in the server.in file
+	-The window size value in both client.in and server.in should be the same
 
 ----------------------------------------
 
@@ -175,6 +181,9 @@ These structures were kept in an array called 'infolist'.
 Report the details of your modifications to the code of Section 22.5 in the ReadMe file
  which you hand in with your code.
 
+Converted all calculations to integer and milli seconds. So the rto starts with 1000ms 
+and goes on till 3000 ms. For retries it tries at the max 13 times and if the client doesnt 
+send the ack , server  stop trying and gives up
 
 ----------------------------------------
 

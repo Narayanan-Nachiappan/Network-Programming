@@ -8,7 +8,7 @@
 #define HD_FILE_ACK		4 // The client sends an acknowledgement to the server for the packet
 #define HD_INIT_ACK		5 // The client sends an acknowledgement to the server for the init connection
 #define HD_EOF_FILE		6 // The server indicates client the EOF
-
+#define RTT_FIN_WAIT    2
 fd_set rset;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -167,7 +167,7 @@ void dg_client( int sockfd,  SA *pservaddr, socklen_t servlen, uint32_t windSize
 			fprintf(stderr,"WAITING FOR 2*RTO\n");
 			struct timeval tv;
 	
-			tv.tv_sec= RTT_RXTMAX * 2;
+			tv.tv_sec= RTT_FIN_WAIT * 2;
 			tv.tv_usec=0;
 			FD_ZERO(&rset);
 			FD_SET(sockfd, &rset);

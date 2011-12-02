@@ -12,10 +12,10 @@ int		rtt_d_flag = 0;		/* debug flag; can be set by caller */
 static float
 rtt_minmax(float rto)
 {
-	if (rto < RTT_RXTMIN)
-		rto = RTT_RXTMIN;
-	else if (rto > RTT_RXTMAX)
-		rto = RTT_RXTMAX;
+	if (rto < RTT_RXTMIN/1000)
+		rto = RTT_RXTMIN/1000;
+	else if (rto > RTT_RXTMAX/1000)
+		rto = RTT_RXTMAX/1000;
 	return(rto);
 }
 
@@ -29,7 +29,7 @@ rtt_init(struct rtt_info *ptr)
 
 	ptr->rtt_rtt    = 0;
 	ptr->rtt_srtt   = 0;
-	ptr->rtt_rttvar = 0.75;
+	ptr->rtt_rttvar = 0.25;
 	ptr->rtt_rto = rtt_minmax(RTT_RTOCALC(ptr));
 		/* first RTO at (srtt + (4 * rttvar)) = 3 seconds */
 }
@@ -82,7 +82,7 @@ rtt_stop(struct rtt_info *ptr, int ms)
 {
 	int		delta;
 
-	ptr->rtt_rtt = (int)(ms / 1000);		/* measured RTT in seconds */
+	ptr->rtt_rtt = (int)(ms );		/* measured RTT in seconds */
 
 	/*
 	 * Update our estimators of RTT and mean deviation of RTT.
@@ -131,6 +131,7 @@ rtt_debug(struct rtt_info *ptr)
 		return;
 
 	fprintf(stderr, "rtt = %d, srtt = %d, rttvar = %d, rto = %d\n",
-			ptr->rtt_rtt, ptr->rtt_srtt, ptr->rtt_rttvar, ptr->rtt_rto);
+			ptr->rtt_rtt, ptr->rtt_srtt, ptr->rtt_rttvar, ptr->rtt_rto*1000);
+	fprintf(stderr,"All values in ms\n");
 	fflush(stderr);
 }
