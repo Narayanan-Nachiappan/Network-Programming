@@ -41,7 +41,7 @@ int areq (struct sockaddr *IPaddr, socklen_t sockaddrlen, struct hwaddr *HWaddr)
 	}
 	if (setjmp(env) == 0) {
 			alarm(10);
-			recvfrom(sockfd,(struct hwaddr *)HWaddr,vmAddr,SERVER_UNIX_PORT,1);
+			recvfrom(sockfd, (struct hwaddr *)HWaddr, MAXLINE, 0, &sockaddress, &address_len)
 			alarm(0);
 	}
 	else{
