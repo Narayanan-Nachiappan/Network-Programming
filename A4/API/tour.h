@@ -1,0 +1,1 @@
+#define ODR_TOUR_SUNPATH "g15_tour_path"
