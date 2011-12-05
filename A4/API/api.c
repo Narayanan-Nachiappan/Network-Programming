@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <setjmp.h>
-#include "tour.h"
+#include "arp.h"
 #include "random.c"
 #include "api.h"
 #define SIZE 1024
@@ -32,7 +32,7 @@ int areq (struct sockaddr *IPaddr, socklen_t sockaddrlen, struct hwaddr *HWaddr)
 	Bind(sockfd, (SA *) &cliaddr, sizeof(cliaddr));
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sun_family = AF_LOCAL;
-	strcpy(servaddr.sun_path, ODR_TOUR_SUNPATH);
+	strcpy(servaddr.sun_path, ARP_DG_PATH);
 	signal(SIGALRM, timeout);
 	if(sendto(sockfd, (char *)IPaddr, sockaddrlen, 0, (struct sockaddr*) &servaddr, sizeof(struct sockaddr)) < 0)
 	{
