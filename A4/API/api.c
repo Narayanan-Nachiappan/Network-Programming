@@ -14,21 +14,24 @@ int areq (struct sockaddr *IPaddr, socklen_t sockaddrlen, struct hwaddr *HWaddr)
 	
 	int	sockfd;
 	int	tempfd;
+	int yes=1;
 	char sendline[100];
 	char vmAddr[INET_ADDRSTRLEN];
 	char hostName[SIZE];
 	struct sockaddr_un	cliaddr, servaddr;
-	sockfd = Socket(AF_LOCAL, SOCK_STREAM, 0);
+	sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
 	if(sockfd<0){
 		err_msg("%s",strerror(errno));
 	}
 	bzero(&cliaddr, sizeof(cliaddr));	
 	cliaddr.sun_family = AF_LOCAL;
-	//int random =randomgenerator();
 	char temp[14];
 	strcpy(cliaddr.sun_path, CLI_SUN_PATH);
 	unlink(CLI_SUN_PATH);
-
+if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+            err_msg("setsockopt");
+            return -1;
+        }
 	if ((bind(sockfd, (SA *) &cliaddr, sizeof(cliaddr)))<0)
 	{
 		err_msg("bind error %s",strerror(errno));
@@ -91,6 +94,5 @@ int main(int argc, char **agrv){
 	haddr->sll_ifindex=1;
 	haddr->sll_hatype=2;
 	haddr->sll_halen='1';
-	//haddr->sll_addr="";
 	areq(ipaddr,len,haddr);
 }
