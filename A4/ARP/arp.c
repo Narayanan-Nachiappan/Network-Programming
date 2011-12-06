@@ -122,16 +122,20 @@ int sendRequest(char* address)
 	int i;
 	struct arp_message request;
 	
+	
 	strncpy(request.sender_ip, arp_table[0].ip_addr, 16);
-	strncpy(request.target_ip, request.sender_ip, 16);
+	strncpy(request.target_ip, address, 16);
 	memcpy((void*)request.sender_haddr, (void*)eth0_haddr, 6);
-
-	request.op = 1;
+	memset((void*)request.target_haddr, 0, sizeof(request.target_haddr));
+	printf("ARP0 IP: %s\n", arp_table[0].ip_addr);
+	printf("%s\n", request.sender_ip);
+	
+	request.op = htons(1);
 	request.id = htons(ID_NUM);
 	request.hard_type = htons(1);
 	request.proto_type = htons(0x0800);
-	request.hard_size = 6;
-	request.proto_size = 4;
+	request.hard_size = htons(6);
+	request.proto_size = htons(4);
 	
 	printf("Sending ARP Request message\n");
 	printARP(request);
@@ -153,14 +157,15 @@ int sendReply(struct arp_message request, int cache)
 	
 	strncpy(reply.sender_ip, request.target_ip, 16);
 	strncpy(reply.target_ip, request.sender_ip, 16);
-	memcpy((void*)reply.sender_haddr, (void*)eth0_haddr, 6);
-	memcpy((void*)reply.target_haddr, (void*)request.sender_ip, 6);
-	reply.op = 2;
+	memcpy((void*)reply.target_haddr, (void*)request.sender_haddr, 6);
+	memcpy((void*)reply.sender_haddr, (void*)arp_table[cache].if_haddr, 6);
+	
+	reply.op = htons(2);
 	reply.id = htons(ID_NUM);
 	reply.hard_type = htons(1);
 	reply.proto_type = htons(0x0800);
-	reply.hard_size = 6;
-	reply.proto_size = 4;
+	reply.hard_size = htons(6);
+	reply.proto_size = htons(4);
 	
 	printf("Sending ARP Reply message\n");
 	printARP(reply);
@@ -269,33 +274,65 @@ int checktable(char* target_ip)
 	return -1;
 }
 
-int addEntry(char* ip_addr, char* haddr, int index, int hatype, int sockfd)
+int addEntry(char* ip_addr, char* haddr, int index, int hatype, int sockfd, int place)
 {
 	int i;
-	if(tablesize + 1 < MAX_ARP_ITEMS)
+	
+	/*
+	index = ntohs(index);
+	hatype = ntohs(hatype);
+	sockfd = ntohs(sockfd);*/
+	
+	printf("Attempting to add entry: %s, ", ip_addr);
+	printHW(haddr);
+	printf(", %d, %d, %d\n", index, hatype, sockfd);
+	
+	if(place == -1)
 	{
-		tablesize++;
-		strncpy(arp_table[tablesize].if_haddr, haddr, 6);
-		arp_table[tablesize].if_index = index;
-		strncpy(arp_table[tablesize].ip_addr, ip_addr, 16);
-		arp_table[tablesize].sll_hatype = hatype;
-		arp_table[tablesize].sockfd = sockfd;
-		lastentry = tablesize;
-	}
-	else
-	{
-		for(i = 0; i < MAX_ARP_ITEMS; i++)
+		//Entry is new, find a new slot
+		if((tablesize + 1) < MAX_ARP_ITEMS)
 		{
-			if(arp_table[i].ip_addr[0] == '\0');
+			tablesize++;
+			strncpy(arp_table[tablesize].if_haddr, haddr, 6);
+			arp_table[tablesize].if_index = index;
+			strncpy(arp_table[tablesize].ip_addr, ip_addr, 16);
+			arp_table[tablesize].sll_hatype = hatype;
+			arp_table[tablesize].sockfd = sockfd;
+			lastentry = tablesize;
+		}
+		else
+		{
+			for(i = 0; i < MAX_ARP_ITEMS; i++)
 			{
-				lastentry = i;
-				return i;
+				if(arp_table[i].ip_addr[0] == '\0');
+				{
+					strncpy(arp_table[i].if_haddr, haddr, 6);
+					arp_table[i].if_index = index;
+					strncpy(arp_table[i].ip_addr, ip_addr, 16);
+					arp_table[i].sll_hatype = hatype;
+					arp_table[i].sockfd = sockfd;
+					lastentry = i;
+					return i;
+				}
 			}
 		}
 		
 		printf("Table is full!\n");
 		return -1;
 	}
+	else
+	{
+		i = place;
+		strncpy(arp_table[i].if_haddr, haddr, 6);
+		arp_table[i].if_index = index;
+		strncpy(arp_table[i].ip_addr, ip_addr, 16);
+		arp_table[i].sll_hatype = hatype;
+		arp_table[i].sockfd = sockfd;
+		lastentry = i;
+		return i;
+	}
+	
+
 }
 
 int deleteEntry(int i)
@@ -341,6 +378,7 @@ int AREQresponse(int table, int halen, int waiting)
 		
 		if(FD_ISSET(pfsock, &fdset)) //the ARP reply came in
 		{
+			printf("pfsock is ready\n");
 			if(recvfrom(pfsock, rcvline, MAXLINE, 0, &sa, &addrlen) < 0)
 			{
 					printf("pfsock recvfrom error: %d %s\n", errno, strerror(errno));
@@ -348,9 +386,16 @@ int AREQresponse(int table, int halen, int waiting)
 			}
 			
 			msg = rcvline + 14;
-			sal = (struct sockaddr_ll*) &sa;
-			addEntry(msg->sender_ip, msg->sender_haddr, sal->sll_ifindex, sal->sll_hatype, connsock);
-			t = lastentry;
+			printf("ID number = %d, ID_NUM = %d\n", ntohs(msg->id), ID_NUM);
+			if(ntohs(msg->id) == ID_NUM)
+			{
+				printf("ARP Received\n");
+				sal = (struct sockaddr_ll*) &sa;
+				addEntry(msg->sender_ip, msg->sender_haddr, sal->sll_ifindex, sal->sll_hatype, connsock, lastentry);
+				t = lastentry;
+			}
+			else
+				printf("ID Number is invalid\n");
 		}
 		if(FD_ISSET(connsock, &fdset)) //the connection was closed
 		{
@@ -358,7 +403,7 @@ int AREQresponse(int table, int halen, int waiting)
 			if(bytes == 0)
 			{
 				printf("areq() timeout: socket closed\n");
-				deleteEntry(table);
+				deleteEntry(lastentry);
 				close(connsock);
 				return 0;
 			}
@@ -376,7 +421,8 @@ int AREQresponse(int table, int halen, int waiting)
 	hw.sll_addr[6] = 0x00;
 	hw.sll_addr[7] = 0x00;
 	
-	if(sendto(connsock, &hw, sizeof(struct hwaddr), 0, &sa, sizeof(struct sockaddr)) < 0)
+	printf("Sending hwaddr to api\n");
+	if(send(connsock, &hw, sizeof(struct hwaddr), 0) < 0)
 	{
 		if(errno == EPIPE && waiting == 1) //areq timeout, socket is closed
 		{
@@ -398,15 +444,16 @@ int processAREQ(char* rcvline)
 	
 	//address = malloc(16);
 	
-	address = strtok(rcvline, " ");
+	address = strtok(rcvline, ",");
 	temp = strtok(NULL, ",");
 	index = atoi(temp);
 	temp = strtok(NULL, ",");
 	hatype = atoi(temp);
 	temp = strtok(NULL, ",");
 	halen = atoi(temp);
-	temp[0] = "\0";
+	temp[0] = '\0';
 	
+	printf("address: %s, index: %d, hatype: %d, halen: %d\n", address, index, hatype, halen);
 	table = checktable(address);
 	
 	if(table != -1) //if we have it in the table
@@ -415,7 +462,7 @@ int processAREQ(char* rcvline)
 	}
 	else
 	{
-		addEntry(address, temp, index, hatype, connsock);
+		addEntry(address, temp, index, hatype, connsock, -1);
 		sendRequest(address);
 		AREQresponse(table, halen, 1);
 	}
@@ -458,7 +505,7 @@ int processARP(struct arp_message* msg, struct sockaddr* sa)
 		
 		//add entry to the table
 		sal = (struct sockaddr_ll*) sa;
-		addEntry(msg->sender_ip, msg->sender_haddr, sal->sll_ifindex, sal->sll_hatype, connsock);
+		addEntry(msg->sender_ip, msg->sender_haddr, sal->sll_ifindex, sal->sll_hatype, connsock, -1);
 	}
 }
 
@@ -484,11 +531,11 @@ void printARP(struct arp_message msg)
 	printf("Op: %d\n", ntohs(msg.op));
 	printf("Hard Size: %d\n", ntohs(msg.hard_size));
 	printf("Proto Size: %d\n", ntohs(msg.proto_size));
-	printf("Sender IP: %s\n", ntohs(msg.sender_ip));
+	printf("Sender IP: %s\n", msg.sender_ip);
 	printf("Sender HW: ");
 	printHW(msg.sender_haddr);
 	printf("\n");
-	printf("Target IP: %s\n", ntohs(msg.target_ip));
+	printf("Target IP: %s\n", msg.target_ip);
 	printf("Target HW: ");
 	printHW(msg.target_haddr);
 	printf("\n");

@@ -15,7 +15,8 @@
 #define MAX_ARP_ITEMS 10
 #define ARP_DG_PATH "g15_arppath"
 #define PROTO_TYPE 12345
-#define ID_NUM 0x4354
+#define ID_NUM 44354
+
 struct interface
 {
 	char    if_haddr[6];	/* hardware address */
