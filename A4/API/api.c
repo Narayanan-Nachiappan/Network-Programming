@@ -3,11 +3,10 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <setjmp.h>
-#include "arp.h"
-#include "random.c"
 #include "api.h"
 #define SIZE 1024
-
+#define CLI_SUN_PATH "g15_api_path"
+#define ARP_DG_PATH "g15_arppath"
 jmp_buf env;
 extern void timeout();
 
@@ -15,40 +14,62 @@ int areq (struct sockaddr *IPaddr, socklen_t sockaddrlen, struct hwaddr *HWaddr)
 	
 	int	sockfd;
 	int	tempfd;
-	char buf[24] = "GROUP15_";
+	char sendline[100];
 	char vmAddr[INET_ADDRSTRLEN];
 	char hostName[SIZE];
 	struct sockaddr_un	cliaddr, servaddr;
 	sockfd = Socket(AF_LOCAL, SOCK_STREAM, 0);
+	if(sockfd<0){
+		err_msg("%s",strerror(errno));
+	}
 	bzero(&cliaddr, sizeof(cliaddr));	
 	cliaddr.sun_family = AF_LOCAL;
-	int random =randomgenerator();
+	//int random =randomgenerator();
 	char temp[14];
-	sprintf(temp, "%d_XXXXXX", random);
-	strcat(buf, temp);
-	tempfd = mkstemp(buf);
-	strcpy(cliaddr.sun_path, buf);
-	unlink(buf);
-	Bind(sockfd, (SA *) &cliaddr, sizeof(cliaddr));
+	strcpy(cliaddr.sun_path, CLI_SUN_PATH);
+	unlink(CLI_SUN_PATH);
+
+	if ((bind(sockfd, (SA *) &cliaddr, sizeof(cliaddr)))<0)
+	{
+		err_msg("bind error %s",strerror(errno));
+	}
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sun_family = AF_LOCAL;
 	strcpy(servaddr.sun_path, ARP_DG_PATH);
 	signal(SIGALRM, timeout);
-	if(sendto(sockfd, (char *)IPaddr, sockaddrlen, 0, (struct sockaddr*) &servaddr, sizeof(struct sockaddr)) < 0)
+
+	sprintf(sendline,"%s,%d,%u,%c",IPaddr->sa_data,HWaddr->sll_ifindex,HWaddr->sll_hatype,HWaddr->sll_halen);
+	/*	strcat(sendline,IPaddr->sa_data);
+strcat(sendline,",");
+	strcat(sendline,itoa(HWaddr->sll_ifindex));
+	strcat(sendline,",");
+	strcat(sendline,itoa(HWaddr->sll_hatype));
+strcat(sendline,",");
+	strcat(sendline,itoa(HWaddr->sll_halen));*/
+	strcat(sendline,"\0");
+
+ if (connect(sockfd,
+             (struct sockaddr *) &(servaddr),
+             sizeof(struct sockaddr)) < 0) {
+  		printf(" connect error: %d %s\n", errno, strerror(errno));
+		return -1;
+ }
+
+	if(sendto(sockfd, "hi", sizeof("hi"), 0, (struct sockaddr*) &servaddr, sizeof(struct sockaddr)) < 0)
 	{
-		printf("sendto error: %d %s\n", errno, strerror(errno));
+			printf("sendto error: %d %s\n", errno, strerror(errno));
 		return -1;
 	}
 	if (setjmp(env) == 0) {
 			alarm(10);
-			recvfrom(sockfd, (struct hwaddr *)HWaddr, MAXLINE, 0, &sockaddress, &address_len)
+			recvfrom(sockfd, (struct hwaddr *)HWaddr, MAXLINE, 0, NULL, NULL);
 			alarm(0);
 	}
 	else{
 		return -1;
 	}
 
-	unlink(buf);
+	unlink(CLI_SUN_PATH);
 	return 1;
 }
 
@@ -58,4 +79,18 @@ void timeout(int sig){
   printf("Timeout.");
   signal(SIGALRM, timeout);
   longjmp(env, 1);
+}
+
+int main(int argc, char **agrv){
+	struct sockaddr * ipaddr;
+	ipaddr->sa_family=1;
+	sprintf(ipaddr->sa_data,"%s","127.0.0.1");
+	err_msg("%s",ipaddr->sa_data);
+	socklen_t len=sizeof(struct sockaddr);
+	struct hwaddr  *haddr;
+	haddr->sll_ifindex=1;
+	haddr->sll_hatype=2;
+	haddr->sll_halen='1';
+	//haddr->sll_addr="";
+	areq(ipaddr,len,haddr);
 }
