@@ -16,6 +16,7 @@ int areq (struct sockaddr *IPaddr, socklen_t sockaddrlen, struct hwaddr *HWaddr)
 	int	tempfd;
 	int yes=1;
 	char sendline[100];
+	char tmp[100];
 	char vmAddr[INET_ADDRSTRLEN];
 	char hostName[SIZE];
 	struct sockaddr_un	cliaddr, servaddr;
@@ -40,8 +41,10 @@ if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
 	servaddr.sun_family = AF_LOCAL;
 	strcpy(servaddr.sun_path, ARP_DG_PATH);
 	signal(SIGALRM, timeout);
-
-	sprintf(sendline,"%s,%d,%u,%c",IPaddr->sa_data,HWaddr->sll_ifindex,HWaddr->sll_hatype,HWaddr->sll_halen);
+	err_msg(IPaddr->sa_data);
+	strcpy(sendline,IPaddr->sa_data);
+	sprintf(tmp,",%d,%u,%c",HWaddr->sll_ifindex,HWaddr->sll_hatype,HWaddr->sll_halen);
+	strcat(sendline,tmp);
 	/*	strcat(sendline,IPaddr->sa_data);
 strcat(sendline,",");
 	strcat(sendline,itoa(HWaddr->sll_ifindex));
@@ -63,7 +66,8 @@ strcat(sendline,",");
 //			printf("sendto error: %d %s\n", errno, strerror(errno));
 //		return -1;
 //	}
-Writen(sockfd, "hi", strlen("hi"));
+err_msg("%s",sendline);
+Writen(sockfd, sendline, strlen(sendline));
 	if (setjmp(env) == 0) {
 			alarm(10);
 			recvfrom(sockfd, (struct hwaddr *)HWaddr, MAXLINE, 0, NULL, NULL);
@@ -87,13 +91,14 @@ void timeout(int sig){
 
 int main(int argc, char **agrv){
 	struct sockaddr * ipaddr;
+	ipaddr=(struct sockaddr *) malloc(sizeof(struct sockaddr));
 	ipaddr->sa_family=1;
-	sprintf(ipaddr->sa_data,"%s","127.0.0.1");
+	strcpy(ipaddr->sa_data,"127.0.0.1");
 	err_msg("%s",ipaddr->sa_data);
 	socklen_t len=sizeof(struct sockaddr);
 	struct hwaddr  *haddr;
-	haddr->sll_ifindex=1;
-	haddr->sll_hatype=2;
-	haddr->sll_halen='1';
+	haddr->sll_ifindex=2;
+	haddr->sll_hatype=1;
+	haddr->sll_halen='6';
 	areq(ipaddr,len,haddr);
 }
