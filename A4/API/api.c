@@ -58,11 +58,12 @@ strcat(sendline,",");
 		return -1;
  }
 
-	if(sendto(sockfd, "hi", sizeof("hi"), 0, (struct sockaddr*) &servaddr, sizeof(struct sockaddr)) < 0)
-	{
-			printf("sendto error: %d %s\n", errno, strerror(errno));
-		return -1;
-	}
+//	if(sendto(sockfd, "hi", sizeof("hi"), 0, (struct sockaddr*) &servaddr, sizeof(struct sockaddr)) < 0)
+//	{
+//			printf("sendto error: %d %s\n", errno, strerror(errno));
+//		return -1;
+//	}
+Writen(sockfd, "hi", strlen("hi"));
 	if (setjmp(env) == 0) {
 			alarm(10);
 			recvfrom(sockfd, (struct hwaddr *)HWaddr, MAXLINE, 0, NULL, NULL);
