@@ -11,8 +11,8 @@
 #include <sys/un.h>
 #include <time.h>
 
-#define MAX_INTERFACES 10
-#define MAX_ARP_ITEMS 10
+#define MAX_INTERFACES 20
+#define MAX_ARP_ITEMS 20
 #define ARP_DG_PATH "g15_arppath"
 #define PROTO_TYPE 12345
 #define ID_NUM 44354

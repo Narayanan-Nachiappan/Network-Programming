@@ -7,6 +7,7 @@ void table_init();
 void printHW(char* addr);
 void print_ip_hw_pairs();
 void printARP(struct arp_message msg);
+int addEntry(char* ip_addr, char* haddr, int index, int hatype, int sockfd, int place);
 
 int if_nums, listensock, connsock, pfsock, lastentry;
 char requester[6], eth0_haddr[6];
@@ -87,6 +88,10 @@ int main(int argc, char **argv)
 			}
 			
 			memcpy((void*)requester, (void*)rcvline + ETH_ALEN, ETH_ALEN);
+			printHW(rcvline + ETH_ALEN);
+			printf(" to ");
+			printHW(rcvline);
+			printf("\n");
 			msg = rcvline + 14;
 			processARP(msg, &sa);
 		}
@@ -125,11 +130,9 @@ int sendRequest(char* address)
 	
 	strncpy(request.sender_ip, arp_table[0].ip_addr, 16);
 	strncpy(request.target_ip, address, 16);
-	memcpy((void*)request.sender_haddr, (void*)eth0_haddr, 6);
+	memcpy((void*)request.sender_haddr, (void*)eth0_haddr, 6); //FIX THIS! DON'T KEEP SEND ON THIS ADDRESS FOR BROADCAST
 	memset((void*)request.target_haddr, 0, sizeof(request.target_haddr));
-	printf("ARP0 IP: %s\n", arp_table[0].ip_addr);
-	printf("%s\n", request.sender_ip);
-	
+
 	request.op = htons(1);
 	request.id = htons(ID_NUM);
 	request.hard_type = htons(1);
@@ -140,7 +143,7 @@ int sendRequest(char* address)
 	printf("Sending ARP Request message\n");
 	printARP(request);
 	
-	for(i = 0; i < if_nums; i++)
+	for(i = 3; i < if_nums; i++)
 	{
 		if(sendPacket(request, i, 1) == -1)
 		{
@@ -299,6 +302,8 @@ int addEntry(char* ip_addr, char* haddr, int index, int hatype, int sockfd, int 
 			arp_table[tablesize].sll_hatype = hatype;
 			arp_table[tablesize].sockfd = sockfd;
 			lastentry = tablesize;
+			printf("%d items in the table\n", tablesize);
+			return lastentry;
 		}
 		else
 		{
@@ -316,14 +321,14 @@ int addEntry(char* ip_addr, char* haddr, int index, int hatype, int sockfd, int 
 				}
 			}
 		}
-		
-		printf("Table is full!\n");
+
+		printf("Table is full! %d\n", tablesize);
 		return -1;
 	}
 	else
 	{
 		i = place;
-		strncpy(arp_table[i].if_haddr, haddr, 6);
+		memcpy((void*)arp_table[i].if_haddr, (void*)haddr, 6);
 		arp_table[i].if_index = index;
 		strncpy(arp_table[i].ip_addr, ip_addr, 16);
 		arp_table[i].sll_hatype = hatype;
@@ -498,6 +503,7 @@ int processARP(struct arp_message* msg, struct sockaddr* sa)
 			return 0;
 		}
 	}
+	/*
 	else if(ntohs(msg->op) == 2) //received ARP reply
 	{
 		printf("Received ARP Reply\n");
@@ -506,7 +512,7 @@ int processARP(struct arp_message* msg, struct sockaddr* sa)
 		//add entry to the table
 		sal = (struct sockaddr_ll*) sa;
 		addEntry(msg->sender_ip, msg->sender_haddr, sal->sll_ifindex, sal->sll_hatype, connsock, -1);
-	}
+	}*/
 }
 
 void table_init()
