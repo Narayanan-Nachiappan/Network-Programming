@@ -1,9 +1,9 @@
 #include "unp.h"
 #include <string.h>
 
-#define RTPROTO 15153
+#define RTPROTO 250
 #define ID 15153
-#define RTPORT 53535
+#define RTPORT 53534
 #define MULTIADDR "224.0.0.0"
 #define MULTIPORT 555555
 #define SIZE 1024 /* Buffer size */

@@ -32,7 +32,7 @@ int main(int argc, char **argv){
 	}
 
 	/* create a rt socket */
-	if( (rtSockfd = socket(AF_INET, SOCK_RAW, htons(RTPROTO))) < 0){
+	if( (rtSockfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0){
 		err_msg("rt sock: %d %s\n", errno, strerror(errno));
 	}
 
@@ -51,35 +51,36 @@ int main(int argc, char **argv){
 		struct sockaddr_in	dest, src;
 		bzero(&src, sizeof(src));
 		src.sin_family = AF_INET;
-
 		if (inet_pton(AF_INET, tour.addrs[0].ipAddr, &src.sin_addr) <= 0){
-			err_quit("inet_pton error for %s", tour.addrs[0]);
+			err_quit("inet_pton error for %s", tour.addrs[0].ipAddr);
 		}
 		src.sin_port = htons(RTPORT);
 
 		bzero(&dest, sizeof(dest));
 		dest.sin_family = AF_INET;
-		
+		if (inet_pton(AF_INET, tour.addrs[tour.index].ipAddr, &dest.sin_addr) <= 0){
+			err_quit("inet_pton error for %s", tour.addrs[tour.index].ipAddr);
+		}
 		dest.sin_port = htons(RTPORT);
-		
-		if( (bind(rtSockfd, (SA *) &dest, sizeof(dest)) < 0)) {
-			err_msg("bind rt sock: %d %s\n", errno, strerror(errno));
-		}
-		
-		if (inet_pton(AF_INET, tour.addrs[tour.index].ipAddr, &src.sin_addr) <= 0){
-			err_quit("inet_pton error for %s", tour.addrs[0]);
-		}
-		
+
 		char *buf;
 		int userlen = sizeof(struct Tour);
-		buf = (char *)malloc(sizeof(struct ip) + userlen);
+
+		buf = (char *)malloc(sizeof(struct ip) +  userlen);
+
 		memcpy(buf + sizeof(struct ip), &tour, userlen);
+
+		//err_msg("%s", ((struct Tour*)(buf + sizeof(struct ip)))->addrs[0].ipAddr);
 		fillHdr(buf, userlen, &src, &dest);
 
 		err_msg("----------------------------------------");
 		err_msg("Send RT packet from %s to %s",tour.addrs[0].ipAddr, tour.addrs[tour.index].ipAddr );
-		
-		if (sendto(rtSockfd, &buf, sizeof(buf), 0, (struct sockaddr *) &dest, sizeof(dest)) < 0){
+
+		//char temp[20];
+		//Inet_ntop(AF_INET, &dest.sin_addr, temp, sizeof(temp));
+		//err_msg("%s", temp);
+		while(1)
+		if (sendto(rtSockfd, &buf, sizeof(struct ip) + userlen, 0, (struct sockaddr *) &dest, sizeof(dest)) < 0){
 			err_msg("rt socket send: %d %s\n", errno, strerror(errno));
 		}
 	}
@@ -94,9 +95,20 @@ int main(int argc, char **argv){
 		err_msg("set mt_send sock TTL: %d %s\n", errno, strerror(errno));
 	}
 	printf("Waiting\n");
-	while (recv(rtSockfd, buffer, SIZE, 0) > 0){
-		printf ("Caught rt packet: %s\n", buffer+sizeof(struct ip));
+	
+	int n = 0;
+	while (1){
+		n = recvmsg(rtSockfd, &buffer, 0);
+		buffer[n] = 0;
+		printf ("Caught rt packet: %s\n", buffer);
 	}
+
+	/*
+		int n = 0;
+		while( ( n = recvmsg(rtSockfd, &buffer, 0) ) > 0 ){
+			printf ("Caught rt packet: %s\n", buffer+sizeof(struct ip));
+		}
+	*/
 
 }
 
@@ -196,23 +208,23 @@ void joinMTGroup(int mtSockfd_recv, char* mc_addr_str, unsigned short mc_port){
 }
 
 void fillHdr(char *buf, int userlen, struct sockaddr_in *src, struct sockaddr_in *dest){
-	struct ip		*ip;
-
+	struct ip	*ip;
 	ip = (struct ip *) buf;
 	bzero(ip, sizeof(*ip));
 
-	/* 4fill in rest of IP header; */
-	/* 4ip_output() calcuates & stores IP header checksum */
 	ip->ip_v = 4;
 	ip->ip_hl = sizeof(struct ip) >> 2;
-	ip->ip_tos = 0;
-	ip->ip_len = htons(userlen);	/* network byte order */
-	ip->ip_id = ID;			/* let IP set this */
-	ip->ip_off = 0;			/* frag offset, MF and DF flags */
+	ip->ip_tos = 0;	
+#if defined(linux) || defined(__OpenBSD__)
+	ip->ip_len = htons(sizeof(struct ip) + userlen);	/* network byte order */
+#else
+	ip->ip_len = sizeof(struct ip) + userlen;			/* host byte order */
+#endif
+	ip->ip_id = 0;			
+	ip->ip_off = 0;
 	ip->ip_ttl = 64;
-	ip->ip_p = RTPROTO;
+	ip->ip_p = htons(IPPROTO_RAW);
 	ip->ip_sum = 0;
 	ip->ip_src.s_addr = ((struct sockaddr_in *) src)->sin_addr.s_addr;
 	ip->ip_dst.s_addr = ((struct sockaddr_in *) dest)->sin_addr.s_addr;
-
 }
