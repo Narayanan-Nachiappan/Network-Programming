@@ -4,7 +4,7 @@ LIBS = /home/courses/cse533/Stevens/unpv13e/libunp.a -lpthread
 FLAGS = -g -O2 
 CFLAGS = ${FLAGS} -I/home/courses/cse533/Stevens/unpv13e/lib
 
-all: arp api
+all: arp api tour
 	
 api: api.o
 	${CC} ${CFLAGS} -o api api.o ${LIBS}
@@ -19,6 +19,10 @@ arp: arp.o get_hw_addrs.o
 arp.o:
 	${CC} ${CFLAGS} -c arp.c
 
-
+tour: tour.o
+	${CC} ${CFLAGS} -o tour tour.o ${LIBS}
+tour.o:
+	${CC} ${CFLAGS} -c tour.c
+	
 clean:
-	rm -f  arp arp.o arp.bak api api.o
+	rm -f  arp arp.o arp.bak api api.o tour.o tour
