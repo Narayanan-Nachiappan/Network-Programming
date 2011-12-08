@@ -6,23 +6,21 @@
 #define RTPORT 53534
 #define MULTIADDR "224.0.0.0"
 #define MULTIPORT 555555
-#define SIZE 1024 /* Buffer size */
 
 struct IpAddress{
-	char ipAddr[15];
+	char ipAddr[INET_ADDRSTRLEN];
 };
 
 struct Tour{
 	int numNodes;
-	int *nodes;
-	struct IpAddress *addrs;
+	int nodes[20];
+	struct IpAddress addrs[20];
 	int index;
 	struct IpAddress mtAddr;
 	int mtPort;
 };
 
 int isNumber(char str[]){
-	/*hohoho*/
 	int withDecimal=0,isNegative=0 ,i=0;
 	int len = strlen(str);
 
