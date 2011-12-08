@@ -2,19 +2,8 @@
 #include "a.h"
 #include <string.h>
 #include <linux/ip.h>
-#include <linux/icmp.h>
+#include <time.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <linux/ip.h>
-#include <string.h>
-#include <unistd.h>
- 
 char dst_addr[15];
 char src_addr[15];
 
@@ -24,24 +13,6 @@ void joinMTGroup(int, char*, unsigned short);
 unsigned short in_cksum(unsigned short *, int);
 
 int main(int argc, char **argv){
-//	unsigned char mc_ttl=1;     /* time to live (hop count) */
-
-//	int on;
-	/*
-	if(argc > 1){	/* Only for the source node */
-	/*	joinMTGroup(mtSockfd_recv, MULTIADDR, MULTIPORT);
-	}
-
-	/* create a socket for sending to the multicast address */
-	/*if ((mtSockfd_send = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-		err_msg("mt sock: %d %s\n", errno, strerror(errno));
-	}
-	
-	/* set the TTL (time to live/hop count) for the send */
-	/*if ((setsockopt(mtSockfd_send, IPPROTO_IP, IP_MULTICAST_TTL, (void*) &mc_ttl, sizeof(mc_ttl))) < 0) {
-		err_msg("set mt_send sock TTL: %d %s\n", errno, strerror(errno));
-	}
-	*/
 	err_msg("CSE 533 : Network Programming");
 	err_msg("Amelia Ellison - 107838108");
 	err_msg("Narayanan Nachiappan - 107996031");
@@ -61,7 +32,8 @@ int main(int argc, char **argv){
 	int mtSockfd_recv;			/* mt socket (Receiving) */
     int optval;
     int addrlen;
- 
+	unsigned char mc_ttl=1;     /* time to live (hop count) */
+
 	/* create socket to join multicast group on */
 	if ((mtSockfd_recv = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 	    err_msg("mt_recv sock: %d %s\n", errno, strerror(errno));
@@ -85,6 +57,16 @@ int main(int argc, char **argv){
     /****************************************************************/
 
     if(argc > 1){	/* Only for the source node */
+		/* create a socket for sending to the multicast address */
+		if ((mtSockfd_send = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+			err_msg("mt sock: %d %s\n", errno, strerror(errno));
+		}
+		/* set the TTL (time to live/hop count) for the send */
+		if ((setsockopt(mtSockfd_send, IPPROTO_IP, IP_MULTICAST_TTL, (void*) &mc_ttl, sizeof(mc_ttl))) < 0) {
+			err_msg("set mt_send sock TTL: %d %s\n", errno, strerror(errno));
+		}
+
+		joinMTGroup(mtSockfd_recv, MULTIADDR, MULTIPORT);
 		struct Tour tour;
 		initTour(&tour, argc, argv);
 		printVisitingNode(&tour); /* Print list of visiting nodes and their addresses */
@@ -125,30 +107,46 @@ int main(int argc, char **argv){
 			err_msg("rt socket send: %d %s\n", errno, strerror(errno));
 		}
 	}
- 
-	err_msg("Waiting");
-
+	err_msg("Waiting for the RT Packet");
 	addrlen = sizeof(connection);
-    if (recv(rtSockfd, buffer, sizeof(struct iphdr) + sizeof(struct Tour), 0) < 0){
-		err_msg("rt socket recv: %d %s\n", errno, strerror(errno));
-    } else {
+    while (recv(rtSockfd, buffer, sizeof(struct iphdr) + sizeof(struct Tour), 0) >= 0){
 		err_msg("----------------------------------------");
-		err_msg("Packet received");
+		err_msg("Packet received - check the ID value");
 		ip_reply = (struct iphdr*) buffer;
 		/* check received packet */
 		receivedTour = (struct Tour*) (buffer + sizeof(struct iphdr));
 		err_msg("----------------------------------------");
 		err_msg("Protocol: %d", ip_reply->protocol);
 		err_msg("ID: %d", ntohs(ip_reply->id));
-	    err_msg("TTL: %d", ip_reply->ttl);
-		err_msg("----------------------------------------");
-		err_msg("List of visiting nodes");
-		err_msg("Tour information");
-		err_msg("Number of Nodes: %d", receivedTour->numNodes);
-		err_msg("Index: %d", receivedTour->index);
-		printVisitingNode(receivedTour);
+		err_msg("TTL: %d", ip_reply->ttl);
+		if(ntohs(ip_reply->id) == ID){
+			err_msg("[Valid ID] - proceed");
+			struct sockaddr_in servaddr;
+			struct hostent *hptr;
+			struct in_addr **pptr;
+			servaddr.sin_addr.s_addr = ip_reply->daddr;
+			pptr = &servaddr.sin_addr;
+
+			if ( (hptr = gethostbyaddr(pptr, sizeof (pptr), AF_INET)) == NULL) {
+				err_sys("gethostbyaddr error for host: %s: %s",	ip_reply, hstrerror(h_errno));
+			}
+			
+			time_t ticks;
+			ticks = time(NULL);
+			err_msg("%.24s\r", ctime(&ticks));
+			err_msg(" received source routing packet from < %s >", hptr->h_name);
+			err_msg("----------------------------------------");
+			err_msg("List of visiting nodes");
+			err_msg("Tour information");
+			err_msg("Number of Nodes: %d", receivedTour->numNodes);
+			err_msg("Index: %d", receivedTour->index);
+			printVisitingNode(receivedTour);
+		} else {
+			err_msg("[Invalid ID] - ignore");
+			continue;
+		}
     }
-    
+
 	close(rtSockfd);
     return 0;
 
