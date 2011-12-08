@@ -130,7 +130,7 @@ int sendRequest(char* address)
 	
 	strncpy(request.sender_ip, arp_table[0].ip_addr, 16);
 	strncpy(request.target_ip, address, 16);
-	memcpy((void*)request.sender_haddr, (void*)eth0_haddr, 6); //FIX THIS! DON'T KEEP SEND ON THIS ADDRESS FOR BROADCAST
+	memcpy((void*)request.sender_haddr, (void*)arp_table[0].if_haddr, 6);
 	memset((void*)request.target_haddr, 0, sizeof(request.target_haddr));
 
 	request.op = htons(1);
@@ -140,17 +140,16 @@ int sendRequest(char* address)
 	request.hard_size = htons(6);
 	request.proto_size = htons(4);
 	
-	printf("Sending ARP Request message\n");
+	printf("Sending ARP Request message\n");	
 	printARP(request);
 	
-	for(i = 3; i < if_nums; i++)
+	for(i = 2; i < if_nums; i++)
 	{
 		if(sendPacket(request, i, 1) == -1)
 		{
 			printf("Sendpacket failed!\n");
 		}
 	}
-	
 	return 0;
 }
 
@@ -419,7 +418,7 @@ int AREQresponse(int table, int halen, int waiting)
 	else
 		t = table;
 	
-	hw.sll_ifindex = arp_table[t].if_index;
+	hw.sll_ifindex = htons(arp_table[t].if_index);
 	hw.sll_halen = halen;
 	hw.sll_hatype = arp_table[t].sll_hatype;
 	memcpy((void*)hw.sll_addr, (void*)arp_table[t].if_haddr, 6);
@@ -427,7 +426,7 @@ int AREQresponse(int table, int halen, int waiting)
 	hw.sll_addr[7] = 0x00;
 	
 	printf("Sending hwaddr to api\n");
-	if(send(connsock, &hw, sizeof(struct hwaddr), 0) < 0)
+	if(send(arp_table[t].sockfd, &hw, sizeof(struct hwaddr), 0) < 0)
 	{
 		if(errno == EPIPE && waiting == 1) //areq timeout, socket is closed
 		{
@@ -439,6 +438,7 @@ int AREQresponse(int table, int halen, int waiting)
 	}
 	
 	close(connsock);
+	arp_table[t].sockfd = -1;
 	return 0;
 }
 
