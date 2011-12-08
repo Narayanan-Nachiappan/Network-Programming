@@ -46,11 +46,6 @@ int main(int argc, char **argv){
 	    err_msg("mt_recv sock: %d %s\n", errno, strerror(errno));
 	}
 
-	/* create a rt socket */
-	/*if( (rtSockfd = socket(AF_INET, SOCK_RAW, RTPROTO)) < 0){
-		err_msg("rt sock: %d %s\n", errno, strerror(errno));
-	}
-
 	/* set the socket option - IP_HDRINCL */
 	/*if(setsockopt(rtSockfd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0){
 		err_msg("set rt sock option: %d %s\n", errno, strerror(errno));
@@ -149,21 +144,24 @@ int main(int argc, char **argv){
     struct sockaddr_in connection;
     char* packet;
     char* buffer;
-    int sockfd;
+    int rtSockfd;
     int optval;
     int addrlen;
  
     struct Tour tour;
 	initTour(&tour, argc, argv);
-	
-	//parse_argvs(argv, dst_addr, src_addr);
+	printVisitingNode(&tour); /* Print list of visiting nodes and their addresses */
 
-	strcpy(src_addr, tour.addrs[0].ipAddr);
-	strcpy(dst_addr, tour.addrs[tour.index].ipAddr);
+	parse_argvs(argv, dst_addr, src_addr);
+
+	strncpy(src_addr, tour.addrs[0].ipAddr, 15);
+	strncpy(dst_addr, tour.addrs[tour.index].ipAddr, 15);
 
     printf("Source address: %s\n", src_addr);
     printf("Destination address: %s\n", dst_addr);
-     
+
+	/*hohoho*/
+
     /*
      * allocate all necessary memory
     */
@@ -183,26 +181,25 @@ int main(int argc, char **argv){
     ip->ihl          = 5;
     ip->version      = 4;
     ip->tos          = 0;
-    ip->tot_len          = sizeof(struct iphdr) + sizeof(struct icmphdr);
+    ip->tot_len      = sizeof(struct iphdr) + sizeof(struct icmphdr);
     ip->id           = htons(ID);
     ip->ttl          = 255;
-    ip->protocol     = IPPROTO_ICMP;
-    ip->saddr            = inet_addr(src_addr);
-    ip->daddr            = inet_addr(dst_addr);
+    ip->protocol     = RTPROTO;
+    ip->saddr        = inet_addr(src_addr);
+    ip->daddr        = inet_addr(dst_addr);
  
-    if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == -1)
-    {
-    perror("socket");
-    exit(EXIT_FAILURE);
-    }
-     
+	/* create a rt socket */
+	if( (rtSockfd = socket(AF_INET, SOCK_RAW, RTPROTO)) < 0){
+		err_msg("rt sock: %d %s\n", errno, strerror(errno));
+	}
+	
     /* 
      *  IP_HDRINCL must be set on the socket so that
      *  the kernel does not attempt to automatically add
      *  a default ip header to the packet
      */
      
-    setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(int));
+    setsockopt(rtSockfd, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(int));
      
     /*
      *  here the icmp packet is created
@@ -224,14 +221,14 @@ int main(int argc, char **argv){
      *  now the packet is sent
      */
      
-    sendto(sockfd, packet, ip->tot_len, 0, (struct sockaddr *)&connection, sizeof(struct sockaddr));
+    sendto(rtSockfd, packet, ip->tot_len, 0, (struct sockaddr *)&connection, sizeof(struct sockaddr));
     printf("Sent %d byte packet to %s\n", ip->tot_len, dst_addr);
      
     /*
      *  now we listen for responses
      */
     addrlen = sizeof(connection);
-    if (recv(sockfd, buffer, sizeof(struct iphdr) + sizeof(struct icmphdr), 0) == -1)
+    if (recv(rtSockfd, buffer, sizeof(struct iphdr) + sizeof(struct icmphdr), 0) == -1)
     {
     perror("recv");
     }
@@ -242,7 +239,7 @@ int main(int argc, char **argv){
     printf("ID: %d\n", ntohs(ip_reply->id));
     printf("TTL: %d\n", ip_reply->ttl);
     }
-    close(sockfd);
+    close(rtSockfd);
     return 0;
 
 
@@ -285,9 +282,7 @@ void initTour(struct Tour *tour, int size, char **argv){
 		int j = atoi(nodeName);
 		if(j > 10) err_quit("Invalid argument: %s", argv[i]);
 		nodes[i] = j;
-
-		hptr = gethostbyname(argv[i]);
-
+		
 		hptr = gethostbyname(argv[i]);
 		pptr = (struct in_addr**) hptr->h_addr_list;
 		Inet_ntop(hptr->h_addrtype, *pptr, ipAddr, sizeof(ipAddr));

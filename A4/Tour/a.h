@@ -1,7 +1,7 @@
 #include "unp.h"
 #include <string.h>
 
-#define RTPROTO 7
+#define RTPROTO 199
 #define ID 1515
 #define RTPORT 53534
 #define MULTIADDR "224.0.0.0"
@@ -22,6 +22,7 @@ struct Tour{
 };
 
 int isNumber(char str[]){
+	/*hohoho*/
 	int withDecimal=0,isNegative=0 ,i=0;
 	int len = strlen(str);
 
