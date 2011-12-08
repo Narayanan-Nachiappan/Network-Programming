@@ -5,7 +5,8 @@
 #define ID 1515
 #define RTPORT 53534
 #define MULTIADDR "224.0.0.0"
-#define MULTIPORT 555555
+#define MULTIPORT 55555
+
 
 struct IpAddress{
 	char ipAddr[INET_ADDRSTRLEN];

@@ -27,6 +27,7 @@ int main(int argc, char **argv){
     struct sockaddr_in connection;
     char* packet;
     char* buffer;
+	int rtFlag = 0;				/* rt packet visited? */
     int rtSockfd;				/* rt socket */
 	int mtSockfd_send;			/* mt socket (Sending) */
 	int mtSockfd_recv;			/* mt socket (Receiving) */
@@ -82,6 +83,7 @@ int main(int argc, char **argv){
 		ip = malloc(sizeof(struct iphdr));
 		ip = (struct iphdr*) packet;
      
+
 		/* ip header */
 		ip->ihl          = 5;
 		ip->version      = 4;
@@ -92,7 +94,7 @@ int main(int argc, char **argv){
 		ip->protocol     = RTPROTO;
 		ip->saddr        = inet_addr(src_addr);
 		ip->daddr        = inet_addr(dst_addr);
-	    
+
 		memcpy(packet + sizeof(struct iphdr), &tour, sizeof(struct Tour));
 
 		ip->check = in_cksum((unsigned short *)ip, sizeof(struct iphdr) + sizeof(struct Tour));
@@ -141,6 +143,46 @@ int main(int argc, char **argv){
 			err_msg("Number of Nodes: %d", receivedTour->numNodes);
 			err_msg("Index: %d", receivedTour->index);
 			printVisitingNode(receivedTour);
+			err_msg("MC Addr: %s", receivedTour->mtAddr.ipAddr);
+			err_msg("MC Port: %d", receivedTour->mtPort);
+			
+			if(rtFlag == 0){
+				err_msg("----------------------------------------");
+				err_msg("The first time rt packet visited - join the MC group");
+				joinMTGroup(mtSockfd_recv, receivedTour->mtAddr.ipAddr, receivedTour->mtPort);
+				rtFlag = 1;
+				
+				err_msg("----------------------------------------");
+				err_msg("Send ping to the Source node");
+
+				/**
+					
+
+
+				**/
+
+
+				err_msg("----------------------------------------");
+				if(receivedTour->index+1 == receivedTour->numNodes){
+					err_msg("Reached the last node!");
+				} else {
+					err_msg("Send RT packet from %s to %s"
+						,receivedTour->addrs[receivedTour->index].ipAddr, receivedTour->addrs[receivedTour->index+1].ipAddr);
+					ip_reply->tot_len = sizeof(struct iphdr)  + sizeof(struct Tour);
+					ip_reply->saddr = inet_addr(receivedTour->addrs[receivedTour->index].ipAddr);
+					receivedTour->index = receivedTour->index + 1;
+					ip_reply->daddr = inet_addr(receivedTour->addrs[receivedTour->index].ipAddr);
+					ip_reply->check = in_cksum((unsigned short *)ip_reply, sizeof(struct iphdr) + sizeof(struct Tour));
+
+					connection.sin_family = AF_INET;
+					connection.sin_addr.s_addr = inet_addr(receivedTour->addrs[receivedTour->index].ipAddr);
+
+					if (sendto(rtSockfd, buffer, ip_reply->tot_len, 0, (struct sockaddr *)&connection, sizeof(struct sockaddr)) < 0){
+						err_msg("rt socket send: %d %s\n", errno, strerror(errno));
+					}
+				}
+			}
+
 		} else {
 			err_msg("[Invalid ID] - ignore");
 			continue;
@@ -151,7 +193,6 @@ int main(int argc, char **argv){
     return 0;
 
 }
-
 void initTour(struct Tour *tour, int size, char **argv){
 	char hostName[10];
 	char ipAddr[INET_ADDRSTRLEN];
@@ -203,6 +244,7 @@ void initTour(struct Tour *tour, int size, char **argv){
 	struct IpAddress mtAddr;
 	strcpy(mtAddr.ipAddr, MULTIADDR);
 	tour->mtAddr = mtAddr;
+	tour->mtPort = MULTIPORT;
 }
 
 void printVisitingNode(struct Tour *tour){
