@@ -7,9 +7,9 @@
 char dst_addr[15];
 char src_addr[15];
 
+int mtRecv(char*, int);
 void initTour(struct Tour*, int, char**);
 void printVisitingNode(struct Tour*);
-void joinMTGroup(int, char*, unsigned short);
 unsigned short in_cksum(unsigned short *, int);
 
 int main(int argc, char **argv){
@@ -27,17 +27,24 @@ int main(int argc, char **argv){
     struct sockaddr_in connection;
     char* packet;
     char* buffer;
-	int rtFlag = 0;				/* rt packet visited? */
-    int rtSockfd;				/* rt socket */
-	int mtSockfd_send;			/* mt socket (Sending) */
-	int mtSockfd_recv;			/* mt socket (Receiving) */
+	char* mtBuffer;		/* buffer to receive string */
+	int rtFlag = 0;		/* rt packet visited? */
+    int rtSockfd;		/* rt socket */
+	int mtSockfd_send;	/* mt socket (Sending) */
+	int mtSockfd_recv;	/* mt socket (Receiving) */
     int optval;
     int addrlen;
 	unsigned char mc_ttl=1;     /* time to live (hop count) */
+	char *send_str = (char *)malloc(128) ;     /* string to send */
 
-	/* create socket to join multicast group on */
-	if ((mtSockfd_recv = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-	    err_msg("mt_recv sock: %d %s\n", errno, strerror(errno));
+	/* create a socket for sending to the multicast address */
+	if ((mtSockfd_send = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+		err_msg("mt send sock: %d %s\n", errno, strerror(errno));
+	}
+
+	/* set the TTL (time to live/hop count) for the send */
+	if ((setsockopt(mtSockfd_send, IPPROTO_IP, IP_MULTICAST_TTL, (void*) &mc_ttl, sizeof(mc_ttl))) < 0) {
+		err_msg("mt send sock option: %d %s\n", errno, strerror(errno));
 	}
 
 	/* create a rt socket */
@@ -58,16 +65,7 @@ int main(int argc, char **argv){
     /****************************************************************/
 
     if(argc > 1){	/* Only for the source node */
-		/* create a socket for sending to the multicast address */
-		if ((mtSockfd_send = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-			err_msg("mt sock: %d %s\n", errno, strerror(errno));
-		}
-		/* set the TTL (time to live/hop count) for the send */
-		if ((setsockopt(mtSockfd_send, IPPROTO_IP, IP_MULTICAST_TTL, (void*) &mc_ttl, sizeof(mc_ttl))) < 0) {
-			err_msg("set mt_send sock TTL: %d %s\n", errno, strerror(errno));
-		}
-
-		joinMTGroup(mtSockfd_recv, MULTIADDR, MULTIPORT);
+		mtSockfd_recv = mtRecv(MULTIADDR, MULTIPORT);
 		struct Tour tour;
 		initTour(&tour, argc, argv);
 		printVisitingNode(&tour); /* Print list of visiting nodes and their addresses */
@@ -93,9 +91,9 @@ int main(int argc, char **argv){
 		ip->protocol     = RTPROTO;
 		ip->saddr        = inet_addr(src_addr);
 		ip->daddr        = inet_addr(dst_addr);
-
+		
+		/* Copy the Tour List to the packet */
 		memcpy(packet + sizeof(struct iphdr), &tour, sizeof(struct Tour));
-
 		ip->check = in_cksum((unsigned short *)ip, sizeof(struct iphdr) + sizeof(struct Tour));
 
 		connection.sin_family = AF_INET;
@@ -108,31 +106,30 @@ int main(int argc, char **argv){
 			err_msg("rt socket send: %d %s\n", errno, strerror(errno));
 		}
 		
-		char recv_str[1024+1];     /* buffer to receive string */
+		mtBuffer = (char *)malloc(128);
 		int recv_len;                 /* length of string received */
 		struct sockaddr_in from_addr; /* packet source */
 		unsigned int from_len;        /* source addr length */
 
+		/* Receiving MC Packets */
 		for (;;) {	/* loop forever */
 
-			/* clear the receive buffers & structs */
-			memset(recv_str, 0, sizeof(recv_str));
+			/* clear the receive buffers & structs */	
+			memset(mtBuffer, 0, sizeof(mtBuffer));
 			from_len = sizeof(from_addr);
 			memset(&from_addr, 0, from_len);
 
 			/* block waiting to receive a packet */
-			if ((recv_len = recvfrom(mtSockfd_recv, recv_str, 1024, 0, 
-				(struct sockaddr*)&from_addr, &from_len)) < 0) {
-			perror("recvfrom() failed");
-			exit(1);
+			if ((recv_len = recvfrom(mtSockfd_recv, mtBuffer, 128, 0, (struct sockaddr*)&from_addr, &from_len)) < 0) {
+				perror("recvfrom() failed");
+				exit(1);
 			}
 
 			/* output received string */
-			printf("Received %d bytes from %s: ", recv_len, 
-				inet_ntoa(from_addr.sin_addr));
-			printf("%s", recv_str);
+			printf("Received %d bytes from %s: ", recv_len, inet_ntoa(from_addr.sin_addr));
+			printf("%s", mtBuffer);
 		}
-
+		
 	} else { /* Not the Source code */
 
 		/*
@@ -141,7 +138,6 @@ int main(int argc, char **argv){
 			mc
 
 		*/
-
 
 		err_msg("Waiting for the RT Packet");
 		addrlen = sizeof(connection);
@@ -160,7 +156,7 @@ int main(int argc, char **argv){
 				struct sockaddr_in servaddr;
 				struct hostent *hptr;
 				struct in_addr **pptr;
-				servaddr.sin_addr.s_addr = ip_reply->daddr;
+				servaddr.sin_addr.s_addr = ip_reply->saddr;
 				pptr = &servaddr.sin_addr;
 
 				if ( (hptr = gethostbyaddr(pptr, sizeof (pptr), AF_INET)) == NULL) {
@@ -183,9 +179,9 @@ int main(int argc, char **argv){
 				if(rtFlag == 0){
 					err_msg("----------------------------------------");
 					err_msg("The first time rt packet visited - join the MC group");
-					joinMTGroup(mtSockfd_recv, receivedTour->mtAddr.ipAddr, receivedTour->mtPort);
+					mtSockfd_recv = mtRecv(receivedTour->mtAddr.ipAddr, receivedTour->mtPort);
+					
 					rtFlag = 1;
-				
 					err_msg("----------------------------------------");
 					err_msg("Send ping to the Source node");
 
@@ -195,29 +191,29 @@ int main(int argc, char **argv){
 
 					**/
 
-
 					err_msg("----------------------------------------");
 					if(receivedTour->index+1 == receivedTour->numNodes){
 						err_msg("Reached the last node!");
-						char send_str[30];
-					
 						struct sockaddr_in mc_addr; /* socket address structure */
 						unsigned int send_len;      /* length of string to send */
-						
+						unsigned char mc_ttl=1;     /* time to live (hop count) */
+  
+						/* construct a multicast address structure */
 						memset(&mc_addr, 0, sizeof(mc_addr));
 						mc_addr.sin_family      = AF_INET;
 						mc_addr.sin_addr.s_addr = inet_addr(receivedTour->mtAddr.ipAddr);
 						mc_addr.sin_port        = htons(receivedTour->mtPort);
 
-						strcpy(send_str, "ddddd");
+						memset(send_str, 0, sizeof(send_str));	/* clear send buffer */
+						sprintf(send_str, "This is node vm%d. Tour has ended. Group members please identify yourselves.\n\0", receivedTour->nodes[receivedTour->index]);
 						send_len = strlen(send_str);
+
 						/* send string to multicast address */
-						
 						if ((sendto(mtSockfd_send, send_str, send_len, 0, (struct sockaddr *) &mc_addr, sizeof(mc_addr))) != send_len) {
 							perror("sendto() sent incorrect number of bytes");
 							exit(1);
 						}
-
+						memset(send_str, 0, sizeof(send_str));
 					} else {
 						err_msg("Send RT packet from %s to %s"
 							,receivedTour->addrs[receivedTour->index].ipAddr, receivedTour->addrs[receivedTour->index+1].ipAddr);
@@ -282,7 +278,6 @@ void initTour(struct Tour *tour, int size, char **argv){
 		int j = atoi(nodeName);
 		if(j > 10) err_quit("Invalid argument: %s", argv[i]);
 		nodes[i] = j;
-		
 		hptr = gethostbyname(argv[i]);
 		pptr = (struct in_addr**) hptr->h_addr_list;
 		Inet_ntop(hptr->h_addrtype, *pptr, ipAddr, sizeof(ipAddr));
@@ -306,36 +301,6 @@ void printVisitingNode(struct Tour *tour){
 	for(i = 0; i< tour->numNodes; i++){
 		if(i == 0) err_msg("Source: vm%d (%s)", tour->nodes[i], tour->addrs[i].ipAddr);
 		else err_msg("vm%d (%s)", tour->nodes[i], tour->addrs[i].ipAddr);
-	}
-}
-
-void joinMTGroup(int mtSockfd_recv, char* mc_addr_str, unsigned short mc_port){
-	const int on = 1;
-	struct sockaddr_in mc_addr;	/* socket address structure */
-	struct ip_mreq mc_req;		/* multicast request structure */
-
-	/* set reuse port to on to allow multiple binds per host */
-	if ((setsockopt(mtSockfd_recv, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))) < 0) {
-		err_msg("set mt_recv sock option: %d %s\n", errno, strerror(errno));
-	}
-	/* construct a multicast address structure */
-	memset(&mc_addr, 0, sizeof(mc_addr));
-	mc_addr.sin_family      = AF_INET;
-	mc_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	mc_addr.sin_port        = htons(mc_port);
-
-	/* bind to multicast address to socket */
-	if ((bind(mtSockfd_recv, (struct sockaddr *) &mc_addr, sizeof(mc_addr))) < 0) {
-		err_msg("bind mt_recv sock: %d %s\n", errno, strerror(errno));
-	}
-	
-	/* construct an IGMP join request structure */
-	mc_req.imr_multiaddr.s_addr = inet_addr(mc_addr_str);
-	mc_req.imr_interface.s_addr = htonl(INADDR_ANY);
-
-	/* send an ADD MEMBERSHIP message via setsockopt */
-	if ((setsockopt(mtSockfd_recv, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*) &mc_req, sizeof(mc_req))) < 0) {
-		err_msg("set mt_recv sock option: %d %s\n", errno, strerror(errno));
 	}
 }
 
@@ -369,4 +334,57 @@ char* getip()
      
     return inet_ntoa(*(struct in_addr *)h->h_addr);
      
+}
+
+#define MAX_LEN  1024   /* maximum receive string size */
+
+int mtRecv(char* mc_addr_str, int mc_port) {
+
+  int sock;                     /* socket descriptor */
+  int flag_on = 1;              /* socket option flag */
+  struct sockaddr_in mc_addr;   /* socket address structure */
+  char recv_str[MAX_LEN+1];     /* buffer to receive string */
+  int recv_len;                 /* length of string received */
+  struct ip_mreq mc_req;        /* multicast request structure */
+  struct sockaddr_in from_addr; /* packet source */
+  unsigned int from_len;        /* source addr length */
+
+  /* create socket to join multicast group on */
+  if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+    perror("socket() failed");
+    exit(1);
+  }
+  
+  /* set reuse port to on to allow multiple binds per host */
+  if ((setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flag_on,
+       sizeof(flag_on))) < 0) {
+    perror("setsockopt() failed");
+    exit(1);
+  }
+  
+  /* construct a multicast address structure */
+  memset(&mc_addr, 0, sizeof(mc_addr));
+  mc_addr.sin_family      = AF_INET;
+  mc_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  mc_addr.sin_port        = htons(mc_port);
+
+  /* bind to multicast address to socket */
+  if ((bind(sock, (struct sockaddr *) &mc_addr, 
+       sizeof(mc_addr))) < 0) {
+    perror("bind() failed");
+    exit(1);
+  }
+
+  /* construct an IGMP join request structure */
+  mc_req.imr_multiaddr.s_addr = inet_addr(mc_addr_str);
+  mc_req.imr_interface.s_addr = htonl(INADDR_ANY);
+
+  /* send an ADD MEMBERSHIP message via setsockopt */
+  if ((setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, 
+       (void*) &mc_req, sizeof(mc_req))) < 0) {
+    perror("setsockopt() failed");
+    exit(1);
+  }
+
+  return sock;
 }
