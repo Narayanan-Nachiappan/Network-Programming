@@ -206,7 +206,7 @@ int main(int argc, char **argv){
 						
 						memset(&mc_addr, 0, sizeof(mc_addr));
 						mc_addr.sin_family      = AF_INET;
-						mc_addr.sin_addr.s_addr = inet_addr(receivedTour->mtAddr);
+						mc_addr.sin_addr.s_addr = inet_addr(receivedTour->mtAddr.ipAddr);
 						mc_addr.sin_port        = htons(receivedTour->mtPort);
 
 						strcpy(send_str, "ddddd");
