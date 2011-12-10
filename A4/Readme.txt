@@ -59,7 +59,7 @@ MULTICAST send/recv
 -	Multicast receive
 	--When an intermediate node receives the rt [tour message] apart from updating and passing to the next node
 	it also reads the multicast ip and port number and joins the multicast group using
-	IP_ADD_MEMBERSHIP option.
+	IP_ADD_MEMBERSHIP option on a UDP socket.
 	--Then it waits on the multicast socket for messages to arrive on a select.
 -	Multicast send
 	When the last node in the tour is encountered , it sends a message on to the 
