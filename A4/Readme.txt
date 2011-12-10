@@ -37,7 +37,7 @@ arp.c.c
 api.h
 
 /*Tour header that contains the Tour message structure*/
-Tour.h
+a.h
 
 /* Makefile */
 Makefile
@@ -66,3 +66,17 @@ MULTICAST send/recv
 	multicast socket which is followed by a reply from all ther intermediate nodes on the 
 	multicst socket
 ________________________
+TOUR
+       --Source node (which is executed with arguments)
+         Tour parses input arguments and create list of nodes which will be visited.
+         Tour sends IP Raw Packet through the rt socket to the next visiting node with payload (includes, tour list,
+        Multicast group info)
+
+       --The other nodes(which is executed with no argument)
+         When the node received RT packet with the tour list. the nodes join the multicast group and ping the source
+       node(ICMP request) ( now the tour communicates with arp through API )
+         The last node of the tour list will send multicast message asking other nodes to identify itself.
+
+       --When each nodes receives multicast message asking indentification, it sends multicast packet identifying
+       itself.
+ 
