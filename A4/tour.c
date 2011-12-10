@@ -32,14 +32,38 @@ int main(int argc, char **argv){
     char* packet;
     char* buffer;
 	int rtFlag = 0;		/* rt packet visited? */
+	int mtFlag = 0;
     int rtSockfd;		/* rt socket */
 	int mtSockfd_send;	/* mt socket (Sending) */
 	int mtSockfd_recv;	/* mt socket (Receiving) */
-    int optval;
+    int request;        /* packet socket*/
+	int pg;				/* pg socket*/
+	int optval = 1;
     int addrlen;
 	unsigned char mc_ttl=1;     /* time to live (hop count) */
 	char *send_str = (char *)malloc(128);	/* string to send */
 	char *mtBuffer = (char *)malloc(128);	/* buffer to receive string */
+	//request is a PF_PACKET socket used to send pings //************************************BEGIN
+	request = socket(PF_PACKET, SOCK_RAW, htons(PROTO_TYPE));
+	if(request < 0)
+	{
+		printf("request: %d %s\n", errno, strerror(errno));
+		return -1;
+	} 
+	
+	//pg socket is used to receive ICMP_ECHOREPLY
+	pg = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	if(pg < 0)
+	{
+		err_msg("pg sock: %d %s\n", errno, strerror(errno));
+		return -1;
+	}
+	
+	if(setsockopt(pg, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(int)) < 0)
+	{
+		err_msg("set rt sock option: %d %s\n", errno, strerror(errno));
+	}
+	
 	/* create a socket for sending to the multicast address */
 	if ((mtSockfd_send = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 		err_msg("mt send sock: %d %s\n", errno, strerror(errno));
@@ -113,45 +137,106 @@ int main(int argc, char **argv){
 		struct sockaddr_in from_addr; /* packet source */
 		unsigned int from_len;        /* source addr length */
 
-		/* Receiving MC Packets */
-		for (;;) {	/* loop forever */
-			/* clear the receive buffers & structs */	
-			memset(mtBuffer, 0, sizeof(mtBuffer));
-			from_len = sizeof(from_addr);
-			memset(&from_addr, 0, from_len);
 
-			/* block waiting to receive a packet */
-			if ((recv_len = recvfrom(mtSockfd_recv, mtBuffer, 128, 0, (struct sockaddr*)&from_addr, &from_len)) < 0) {
-				err_msg("MC Packet receive: %d %s\n", errno, strerror(errno));
-			}
-			err_msg("----------------------------------------");
-			/* output received string */
-			err_msg("Node vm%d. Received:", tour.nodes[0]);
-			err_msg("Msg: %s", mtBuffer);
-		}
+		fd_set reads, temps;
+		int fd_max, result;
 		
+		for ( ; ; ) {
+			FD_ZERO(&reads); // initialize to 0;
+			FD_SET(mtSockfd_recv, &reads);
+			FD_SET(request, &reads);
+			fd_max = max(request, mtSockfd_recv) + 1;
+
+			result = select(fd_max, &reads, 0, 0, 0);
+
+			if(FD_ISSET(request, &reads)) //got a ping request, send ping reply //********************BEGIN
+			{
+				ping_send2(request, pg);
+			}
+			if(FD_ISSET(mtSockfd_recv, &reads)){
+				/* Receiving MC Packets */
+				/* clear the receive buffers & structs */	
+				memset(mtBuffer, 0, 128);
+				from_len = sizeof(from_addr);
+				memset(&from_addr, 0, from_len);
+
+				/* block waiting to receive a packet */
+				if ((recv_len = recvfrom(mtSockfd_recv, mtBuffer, 128, 0, (struct sockaddr*)&from_addr, &from_len)) < 0) {
+					err_msg("MC Packet receive: %d %s\n", errno, strerror(errno));
+				}
+				err_msg("----------------------------------------");
+				/* output received string */
+				err_msg("Node vm%d. Received:", tour.nodes[0]);
+				err_msg("Msg: %s", mtBuffer);
+
+				if(mtFlag == 0){
+					struct sockaddr_in mc_addr; /* socket address structure */
+					unsigned int send_len;      /* length of string to send */
+					unsigned char mc_ttl=1;     /* time to live (hop count) */
+  
+					/* construct a multicast address structure */
+					memset(&mc_addr, 0, sizeof(mc_addr));
+					mc_addr.sin_family      = AF_INET;
+					mc_addr.sin_addr.s_addr = inet_addr(MULTIADDR);
+					mc_addr.sin_port        = htons(MULTIPORT);
+
+					memset(send_str, 0, sizeof(send_str));	/* clear send buffer */
+					sprintf(send_str, "Node vm%d. I am a member of a group.\n\0", tour.nodes[0]);
+					send_len = strlen(send_str);
+						
+					err_msg("----------------------------------------");
+					err_msg("Node vm%d Sending:", tour.nodes[0]);
+					err_msg("Msg: %s", send_str);
+					err_msg("----------------------------------------");
+
+					/* send string to multicast address */
+					if ((sendto(mtSockfd_send, send_str, send_len, 0, (struct sockaddr *) &mc_addr, sizeof(mc_addr))) != send_len) {
+						perror("sendto() sent incorrect number of bytes");
+						exit(1);
+					}
+					memset(send_str, 0, sizeof(send_str));
+					mtFlag = 1;
+				
+				}
+			}
+		}
 	} else { /* Not the Source code */
 		err_msg("Waiting for the Packets");
 		addrlen = sizeof(connection);
-		/*
-			rt
-			pg
-			mc
-
-		*/
-		fd_set reads, temps;
+	
+		fd_set reads;
 		int fd_max, result;
 		time_t tick = time(NULL);
+		char sourceAddr[16], thisAddr[16], src_mac[6];
+		struct hwa_info	*hwahead = (struct hwa_info*)malloc(sizeof(struct hwa_info));
+		struct hwa_info	*hwa = (struct hwa_info*)malloc(sizeof(struct hwa_info));
+		for ( hwahead = hwa = Get_hw_addrs(); hwa != NULL; hwa = hwa->hwa_next)
+		{
+			if(strncmp(hwa->if_name, "eth0", 4) == 0)
+			{
+				memcpy((void*)src_mac, hwa->if_haddr, 6);
+				break;
+			}
+		}
+		printHW(src_mac);
+		
+		char *hostName = (char *)malloc(20);
+		gethostname(hostName, 20);
 
+		if ((mtSockfd_recv = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+			 perror("socket() failed");
+			exit(1);
+		}
 		for ( ; ; ) {
 			FD_ZERO(&reads); // initialize to 0;
 			FD_SET(rtSockfd, &reads);
-			//FD_SET(pgSockfd, &reads);
 			FD_SET(mtSockfd_recv, &reads);
-			fd_max = max(rtSockfd, mtSockfd_recv) + 1;
+			FD_SET(pg, &reads);
+			FD_SET(request, &reads);
+			fd_max = max(rtSockfd, mtSockfd_recv);
+			fd_max = max(fd_max, pg);
+			fd_max = max(fd_max, request) + 1;
 			
-			int fd;
-			temps = reads;
 			result = select(fd_max, &reads, 0, 0, 0);
 			if(FD_ISSET(rtSockfd, &reads)){
 				if(recv(rtSockfd, buffer, sizeof(struct iphdr) + sizeof(struct Tour), 0) >= 0){
@@ -192,8 +277,10 @@ int main(int argc, char **argv){
 						if(rtFlag == 0){
 							err_msg("----------------------------------------");
 							err_msg("The first time rt packet visited - join the MC group");
-							mtSockfd_recv = mtRecv(MULTIADDR, MULTIPORT);
-							//mtSockfd_recv = mtRecv(receivedTour->mtAddr.ipAddr, receivedTour->mtPort);
+							//mtSockfd_recv = mtRecv(MULTIADDR, MULTIPORT);
+							strcpy(sourceAddr, receivedTour->addrs[0].ipAddr);
+							close(mtSockfd_recv);
+							mtSockfd_recv = mtRecv(receivedTour->mtAddr.ipAddr, receivedTour->mtPort);
 					
 							rtFlag = 1;
 							err_msg("----------------------------------------");
@@ -254,8 +341,9 @@ int main(int argc, char **argv){
 				int recv_len;                 /* length of string received */
 				struct sockaddr_in from_addr; /* packet source */
 				unsigned int from_len;        /* source addr length */
+				
 				/* clear the receive buffers & structs */	
-					memset(mtBuffer, 0, sizeof(mtBuffer));
+					memset(mtBuffer, 0, 128);
 					from_len = sizeof(from_addr);
 					memset(&from_addr, 0, from_len);
 
@@ -265,16 +353,58 @@ int main(int argc, char **argv){
 					}
 					err_msg("----------------------------------------");
 				/* output received string */
-					err_msg("Node vm%d. Received:");//, tour.nodes[0]); /***************************/
+					err_msg("Node %s. Received:", hostName);//, tour.nodes[0]); /***************************/
 					err_msg("Msg: %s", mtBuffer);
+
+					if(mtFlag == 0){
+						struct sockaddr_in mc_addr; /* socket address structure */
+						unsigned int send_len;      /* length of string to send */
+						unsigned char mc_ttl=1;     /* time to live (hop count) */
+  
+						/* construct a multicast address structure */
+						memset(&mc_addr, 0, sizeof(mc_addr));
+						mc_addr.sin_family      = AF_INET;
+						mc_addr.sin_addr.s_addr = inet_addr(receivedTour->mtAddr.ipAddr);
+						mc_addr.sin_port        = htons(receivedTour->mtPort);
+
+						memset(send_str, 0, sizeof(send_str));	/* clear send buffer */
+						sprintf(send_str, "Node %s. I am a member of a group.\n\0", hostName);
+						send_len = strlen(send_str);
+						
+						err_msg("----------------------------------------");
+						err_msg("Node %s Sending:", hostName);
+						err_msg("Msg: %s", send_str);
+						err_msg("----------------------------------------");
+
+						/* send string to multicast address */
+						if ((sendto(mtSockfd_send, send_str, send_len, 0, (struct sockaddr *) &mc_addr, sizeof(mc_addr))) != send_len) {
+							perror("sendto() sent incorrect number of bytes");
+							exit(1);
+						}
+						memset(send_str, 0, sizeof(send_str));
+						mtFlag = 1;
+					}
+			}
+			if(FD_ISSET(pg, &reads)) //get ping reply
+			{
+				ping_recv(pg);
 			}
 
 			if(ping == 1){ //&& ( difftime(tick, time(NULL)) >= 1 )  ){
-				
+				err_msg("386");	
+
+				struct hostent *hptr;
+				struct in_addr **pptr;
+				char ipAddr[16];
+
+				hptr = gethostbyname(hostName);
+				pptr = (struct in_addr**) hptr->h_addr_list;
+				Inet_ntop(hptr->h_addrtype, *pptr, ipAddr, sizeof(ipAddr));
+
 				struct sockaddr * ipaddr;
 				ipaddr=(struct sockaddr *) malloc(sizeof(struct sockaddr));
 				ipaddr->sa_family=1;
-				strcpy(ipaddr->sa_data,"192.168.1.102"); // Source node!!!
+				strcpy(ipaddr->sa_data, sourceAddr); // Source node!!!
 				err_msg("%s",ipaddr->sa_data);
 				socklen_t len=sizeof(struct sockaddr);
 				struct hwaddr  *haddr=malloc(sizeof(struct hwaddr));
@@ -284,9 +414,11 @@ int main(int argc, char **argv){
 				int ret_val=areq(ipaddr,len,haddr);
 				err_msg("retval %d" , ret_val);	
 
-				printHW(haddr->sll_addr);
+				err_msg("409");	
 
-				//ping_send(int ptSockfd, char* thisnode, char* THE SOURCE, char* src_mac, haddr->sll_addr, haddr->sll_ifindex);
+				printHW(haddr->sll_addr);
+				
+				ping_send(request, ipAddr, sourceAddr, src_mac, haddr->sll_addr, haddr->sll_ifindex);
 
 				tick = time(NULL);
 			}
