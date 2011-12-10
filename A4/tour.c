@@ -8,9 +8,6 @@ int ping = 0;
 
 #define MAX_LEN  1024   /* maximum receive string size */
 
-char dst_addr[15];
-char src_addr[15];
-
 int mtRecv(char*, int);
 void initTour(struct Tour*, int, char**);
 void printVisitingNode(struct Tour*);
@@ -26,7 +23,7 @@ int main(int argc, char **argv){
 	err_msg("tour.c");
 	err_msg("----------------------------------------");
     
-	struct iphdr* ip;
+	struct iphdr* ip;	/* ip header */
     struct iphdr* ip_reply;
     struct sockaddr_in connection;
     char* packet;
@@ -43,25 +40,21 @@ int main(int argc, char **argv){
 	unsigned char mc_ttl=1;     /* time to live (hop count) */
 	char *send_str = (char *)malloc(128);	/* string to send */
 	char *mtBuffer = (char *)malloc(128);	/* buffer to receive string */
-	//request is a PF_PACKET socket used to send pings //************************************BEGIN
+
+	/* create a PF_PACKET socket for sending pings */
 	request = socket(PF_PACKET, SOCK_RAW, htons(PROTO_TYPE));
-	if(request < 0)
-	{
-		printf("request: %d %s\n", errno, strerror(errno));
-		return -1;
+	if(request < 0){
+		err_msg("request sock: %d %s\n", errno, strerror(errno));
 	} 
 	
-	//pg socket is used to receive ICMP_ECHOREPLY
+	/* pg socket is used to receive ICMP_ECHOREPLY */
 	pg = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-	if(pg < 0)
-	{
+	if(pg < 0){
 		err_msg("pg sock: %d %s\n", errno, strerror(errno));
-		return -1;
 	}
 	
-	if(setsockopt(pg, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(int)) < 0)
-	{
-		err_msg("set rt sock option: %d %s\n", errno, strerror(errno));
+	if(setsockopt(pg, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(int)) < 0){
+		err_msg("set pg sock option: %d %s\n", errno, strerror(errno));
 	}
 	
 	/* create a socket for sending to the multicast address */
@@ -92,20 +85,15 @@ int main(int argc, char **argv){
     /****************************************************************/
 
     if(argc > 1){	/* Only for the source node */
-		mtSockfd_recv = mtRecv(MULTIADDR, MULTIPORT);
+		mtSockfd_recv = mtRecv(MULTIADDR, MULTIPORT); /* Set up the mt socket (receiving) and Join the Multicast Group */
 		struct Tour tour;
-		initTour(&tour, argc, argv);
-		printVisitingNode(&tour); /* Print list of visiting nodes and their addresses */
+		char src_addr[15], dst_addr[15];
+		initTour(&tour, argc, argv);	/* Initialize Tour List */
+		printVisitingNode(&tour);		/* Print list of visiting nodes and their addresses */
 
-		strncpy(dst_addr, getip(), 15);
-	    strncpy(src_addr, getip(), 15);
 		strncpy(src_addr, tour.addrs[0].ipAddr, 15);
-		strncpy(dst_addr, tour.addrs[tour.index].ipAddr, 15);	
-		
-		printf("Source address: %s\n", src_addr);
-		printf("Destination address: %s\n", dst_addr);
+		strncpy(dst_addr, tour.addrs[tour.index].ipAddr, 15);
 
-		ip = malloc(sizeof(struct iphdr));
 		ip = (struct iphdr*) packet;
      
 		/* ip header */
@@ -137,7 +125,6 @@ int main(int argc, char **argv){
 		struct sockaddr_in from_addr; /* packet source */
 		unsigned int from_len;        /* source addr length */
 
-
 		fd_set reads, temps;
 		int fd_max, result;
 		
@@ -149,7 +136,7 @@ int main(int argc, char **argv){
 
 			result = select(fd_max, &reads, 0, 0, 0);
 
-			if(FD_ISSET(request, &reads)) //got a ping request, send ping reply //********************BEGIN
+			if(FD_ISSET(request, &reads)) //got a ping request, send ping reply //
 			{
 				ping_send2(request, pg);
 			}
@@ -164,8 +151,7 @@ int main(int argc, char **argv){
 				if ((recv_len = recvfrom(mtSockfd_recv, mtBuffer, 128, 0, (struct sockaddr*)&from_addr, &from_len)) < 0) {
 					err_msg("MC Packet receive: %d %s\n", errno, strerror(errno));
 				}
-				err_msg("----------------------------------------");
-				/* output received string */
+				err_msg("----------------------------------------");	/* output received string */
 				err_msg("Node vm%d. Received:", tour.nodes[0]);
 				err_msg("Msg: %s", mtBuffer);
 
@@ -312,7 +298,7 @@ int main(int argc, char **argv){
 								}
 								memset(send_str, 0, sizeof(send_str));
 
-								ping = 1;
+								ping = 1; /* Start pinging the source */
 
 							} else {
 								err_msg("Send RT packet from %s to %s"
@@ -353,7 +339,7 @@ int main(int argc, char **argv){
 					}
 					err_msg("----------------------------------------");
 				/* output received string */
-					err_msg("Node %s. Received:", hostName);//, tour.nodes[0]); /***************************/
+					err_msg("Node %s. Received:", hostName);
 					err_msg("Msg: %s", mtBuffer);
 
 					if(mtFlag == 0){
@@ -385,13 +371,11 @@ int main(int argc, char **argv){
 						mtFlag = 1;
 					}
 			}
-			if(FD_ISSET(pg, &reads)) //get ping reply
-			{
+			if(FD_ISSET(pg, &reads)){ //get ping reply
 				ping_recv(pg);
 			}
 
 			if(ping == 1){ //&& ( difftime(tick, time(NULL)) >= 1 )  ){
-				err_msg("386");	
 
 				struct hostent *hptr;
 				struct in_addr **pptr;
@@ -413,8 +397,6 @@ int main(int argc, char **argv){
 				haddr->sll_halen='6';
 				int ret_val=areq(ipaddr,len,haddr);
 				err_msg("retval %d" , ret_val);	
-
-				err_msg("409");	
 
 				printHW(haddr->sll_addr);
 				
@@ -509,18 +491,6 @@ unsigned short in_cksum(unsigned short *addr, int len){
     sum += (sum >> 16);
     answer = ~sum;
     return (answer);
-}
- 
-char* getip()
-{
-    char buffer[256];
-    struct hostent* h;
-     
-    gethostname(buffer, 256);
-    h = gethostbyname(buffer);
-     
-    return inet_ntoa(*(struct in_addr *)h->h_addr);
-     
 }
 
 int mtRecv(char* mc_addr_str, int mc_port) {
