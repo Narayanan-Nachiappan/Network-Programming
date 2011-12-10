@@ -1,5 +1,5 @@
 #include	"unp.h"
-#include "arp.h"
+#include "arp2.h"
 
 int processARP(struct arp_message* req, struct sockaddr* sa);
 int processAREQ(char* rcvline);
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 			printf(" to ");
 			printHW(rcvline);
 			printf("\n");
-			msg = rcvline + 14;
+			msg = (struct arp_message*)(rcvline + 14);
 			processARP(msg, &sa);
 		}
 		
@@ -126,12 +126,17 @@ int sendRequest(char* address)
 {
 	int i;
 	struct arp_message request;
-	
-	
-	strncpy(request.sender_ip, arp_table[0].ip_addr, 16);
-	strncpy(request.target_ip, address, 16);
+	struct sockaddr_in s;
+	bzero(&s, sizeof(s));
+	//strncpy(request.sender_ip, arp_table[0].ip_addr, 16);
+	//strncpy(request.target_ip, address, 16);
+	inet_pton(AF_INET, arp_table[0].ip_addr, &(s.sin_addr));
+	request.sender_ip = s.sin_addr.s_addr;
+	bzero(&s, sizeof(s));
+	inet_pton(AF_INET, address, &(s.sin_addr));
+	request.target_ip = s.sin_addr.s_addr;
 	memcpy((void*)request.sender_haddr, (void*)arp_table[0].if_haddr, 6);
-	memset((void*)request.target_haddr, 0, sizeof(request.target_haddr));
+	memset((void*)request.target_haddr, 0, 6);
 
 	request.op = htons(1);
 	request.id = htons(ID_NUM);
@@ -157,10 +162,13 @@ int sendReply(struct arp_message request, int cache)
 {
 	struct arp_message reply;
 	
-	strncpy(reply.sender_ip, request.target_ip, 16);
-	strncpy(reply.target_ip, request.sender_ip, 16);
+	reply.sender_ip = request.target_ip;
+	reply.target_ip = request.sender_ip;
 	memcpy((void*)reply.target_haddr, (void*)request.sender_haddr, 6);
 	memcpy((void*)reply.sender_haddr, (void*)arp_table[cache].if_haddr, 6);
+	
+	//strncpy(reply.sender_ip, request.target_ip, 16);
+	//strncpy(reply.target_ip, request.sender_ip, 16);
 	
 	reply.op = htons(2);
 	reply.id = htons(ID_NUM);
@@ -238,8 +246,8 @@ int sendPacket(struct arp_message msg, int index, int broadcast)
 	memcpy((void*)buffer, (void*)dest_mac, ETH_ALEN);
 	memcpy((void*)(buffer+ETH_ALEN), (void*)src_mac, ETH_ALEN);
 	memcpy((void*)data, (void*)&msg, sizeof(struct arp_message));
-	eh->h_proto = htons(PROTO_TYPE);
-	
+	//eh->h_proto = htons(PROTO_TYPE);
+	eh->h_proto = htons(0x0806);
 	//send the packet
 	if(sendto(pfsock, buffer, ETH_FRAME_LEN, 0, (struct sockaddr*)&socket_address, sizeof(socket_address)) < 0)
 	{
@@ -480,6 +488,7 @@ int processARP(struct arp_message* msg, struct sockaddr* sa)
 {
 	int table;
 	struct sockaddr_ll *sal;
+	struct in_addr si;
 	
 	//Make sure the ID number is correct
 	if(ntohs(msg->id) != ID_NUM)
@@ -491,7 +500,8 @@ int processARP(struct arp_message* msg, struct sockaddr* sa)
 	if(ntohs(msg->op) == 1) //received ARP request
 	{
 		printf("Received ARP Request\n");
-		table = checktable(msg->target_ip);
+		si.s_addr = msg->target_ip;
+		table = checktable(inet_ntoa(si));
 		
 		if(table != -1)
 		{
@@ -530,6 +540,7 @@ void table_init()
 
 void printARP(struct arp_message msg)
 {
+	struct in_addr s;
 	printf("ARP Message: \n");
 	printf("ID: %d\n", ntohs(msg.id));
 	printf("Hard Type: %d\n", ntohs(msg.hard_type));
@@ -537,11 +548,13 @@ void printARP(struct arp_message msg)
 	printf("Op: %d\n", ntohs(msg.op));
 	printf("Hard Size: %d\n", ntohs(msg.hard_size));
 	printf("Proto Size: %d\n", ntohs(msg.proto_size));
-	printf("Sender IP: %s\n", msg.sender_ip);
+	s.s_addr = msg.sender_ip;
+	printf("Sender IP: %s\n", inet_ntoa(s));
 	printf("Sender HW: ");
 	printHW(msg.sender_haddr);
 	printf("\n");
-	printf("Target IP: %s\n", msg.target_ip);
+	s.s_addr = msg.target_ip;
+	printf("Target IP: %s\n", inet_ntoa(s));
 	printf("Target HW: ");
 	printHW(msg.target_haddr);
 	printf("\n");

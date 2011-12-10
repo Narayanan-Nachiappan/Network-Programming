@@ -14,7 +14,7 @@
 #define MAX_INTERFACES 20
 #define MAX_ARP_ITEMS 20
 #define ARP_DG_PATH "g15_arppath"
-#define PROTO_TYPE 12345
+#define PROTO_TYPE 22422
 #define ID_NUM 44354
 
 struct interface
@@ -45,15 +45,15 @@ struct hwaddr
 struct arp_message
 {
 	short int id;
-	int hard_type;
-	int proto_type;
-	int op;
-	int hard_size;
-	int proto_size;
-	char sender_ip[16];
-	char sender_haddr[6];	
-	char target_ip[16];
+	short int hard_type;
+	short int proto_type;
+	char hard_size;
+	char proto_size;
+	short int op;
+	char sender_haddr[6];
+	unsigned long sender_ip;
 	char target_haddr[6];
+	unsigned long target_ip;	
 };
 
 struct arp_cache arp_table[MAX_ARP_ITEMS];
