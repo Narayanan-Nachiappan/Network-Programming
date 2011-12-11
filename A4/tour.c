@@ -125,7 +125,7 @@ int main(int argc, char **argv){
 		struct sockaddr_in from_addr; /* packet source */
 		unsigned int from_len;        /* source addr length */
 
-		fd_set reads, temps;
+		fd_set reads, temps , rset;
 		int fd_max, result;
 		
 		for ( ; ; ) {
@@ -183,6 +183,33 @@ int main(int argc, char **argv){
 					memset(send_str, 0, sizeof(send_str));
 					mtFlag = 1;
 				
+					/*for(;;){    
+						struct timeval    tv;
+						tv.tv_sec = 5;
+						tv.tv_usec = 0;
+    
+						FD_ZERO(&rset);
+						FD_SET(mtSockfd_recv, &rset);
+						int m = mtSockfd_recv + 1;
+						select(m, NULL, &rset, NULL, &tv);
+						if(FD_ISSET(mtSockfd_recv,&rset)){
+							memset(mtBuffer, 0, 128);
+							from_len = sizeof(from_addr);
+							memset(&from_addr, 0, from_len);
+
+							/* block waiting to receive a packet */
+					/*		if ((recv_len = recvfrom(mtSockfd_recv, mtBuffer, 128, 0, (struct sockaddr*)&from_addr, &from_len)) < 0) {
+								err_msg("MC Packet receive: %d %s\n", errno, strerror(errno));
+							}
+							err_msg("----------------------------------------");	/* output received string */
+					/*		err_msg("Node vm%d. Received:", tour.nodes[0]);
+							err_msg("Msg: %s", mtBuffer);
+					    } else {
+							err_msg("Termination tour application\n");
+							close(mtSockfd_recv);
+							exit(0);
+						}
+					}*/
 				}
 			}
 		}
@@ -190,7 +217,7 @@ int main(int argc, char **argv){
 		err_msg("Waiting for the Packets");
 		addrlen = sizeof(connection);
 	
-		fd_set reads;
+		fd_set reads, rset;
 		int fd_max, result;
 		time_t tick = time(NULL);
 		char sourceAddr[16], thisAddr[16], src_mac[6];
@@ -343,7 +370,45 @@ int main(int argc, char **argv){
 								if (sendto(rtSockfd, buffer, ip_reply->tot_len, 0, (struct sockaddr *)&connection, sizeof(struct sockaddr)) < 0){
 									err_msg("rt socket send: %d %s\n", errno, strerror(errno));
 								}
+
+							/*	for(;;){    
+								struct timeval    tv;
+								tv.tv_sec = 5;
+								tv.tv_usec = 0;
+    
+								FD_ZERO(&rset);
+								FD_SET(mtSockfd_recv, &rset);
+								int m = mtSockfd_recv + 1;
+								select(m, NULL, &rset, NULL, &tv);
+								if(FD_ISSET(mtSockfd_recv,&rset)){
+									int recv_len;                 /* length of string received */
+							/*		struct sockaddr_in from_addr; /* packet source */
+							/*		unsigned int from_len;        /* source addr length */
+							/*		struct sockaddr_in mc_addr; /* socket address structure */
+							/*		unsigned int send_len;      /* length of string to send */
+							/*		unsigned char mc_ttl=1;     /* time to live (hop count) */
+							/*		memset(mtBuffer, 0, 128);
+									from_len = sizeof(from_addr);
+									memset(&from_addr, 0, from_len);
+
+									/* block waiting to receive a packet */
+							/*		if ((recv_len = recvfrom(mtSockfd_recv, mtBuffer, 128, 0, (struct sockaddr*)&from_addr, &from_len)) < 0) {
+										err_msg("MC Packet receive: %d %s\n", errno, strerror(errno));
+									}
+									err_msg("----------------------------------------");
+									/* output received string */
+							/*		err_msg("Node %s. Received:", hostName);
+									err_msg("Msg: %s", mtBuffer);
+								} else {
+									err_msg("Termination tour application\n");
+									close(mtSockfd_recv);
+									exit(0);
+								}
+							}*/
+
 							}
+
+							
 						}
 					} else {
 						err_msg("[Invalid ID] - ignore");
