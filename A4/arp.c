@@ -1,5 +1,5 @@
-#include	"unp.h"
-#include "arp2.h"
+#include "unp.h"
+#include "arp.h"
 
 int processARP(struct arp_message* req, struct sockaddr* sa);
 int processAREQ(char* rcvline);
@@ -148,7 +148,7 @@ int sendRequest(char* address)
 	printf("Sending ARP Request message\n");	
 	printARP(request);
 	
-	for(i = 2; i < if_nums; i++)
+	for(i = 0; i < if_nums; i++)
 	{
 		if(sendPacket(request, i, 1) == -1)
 		{

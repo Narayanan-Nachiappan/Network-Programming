@@ -1,4 +1,4 @@
-#include "a.h"
+#include <netpacket/packet.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
@@ -7,6 +7,9 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <linux/if_ether.h>
+
+#define ID 1515
+#define PROTO_TYPE 22422
 
 void printHW(char* ptr);
 void verify(char* buffer);
@@ -81,6 +84,13 @@ int ping_send(int sockfd, char* src_addr, char* dst_addr, char* src_mac, char* d
     connection.sin_addr.s_addr = inet_addr(dst_addr);
 	
 	//verify(packet);
+	struct in_addr inaddr;
+	inaddr.s_addr = ip->saddr;
+	printf("Source %s\n", inet_ntoa(inaddr));
+	inaddr.s_addr = ip->daddr;
+	printf("Destination %s\n", inet_ntoa(inaddr));
+	printf("ICMP: %d %d %d %d %d\n", icmp->icmp_type, icmp->icmp_code, icmp->icmp_id, icmp->icmp_seq, icmp->icmp_cksum);
+	
 	//send the packet	
 	if((sent = sendto(sockfd, packet, sizeof(struct iphdr)  + sizeof(struct icmp), 0, (struct sockaddr*)&connection, sizeof(connection))) < 0)
 	{
@@ -159,7 +169,7 @@ int ping_recv(int pg)
 }
 
 
-int main(int argc, char **argv)
+/*int main(int argc, char **argv)
 {
 	int pg, request, maxfd, index, optval = 1;
 	struct hwa_info	*hwa;
@@ -213,7 +223,7 @@ int main(int argc, char **argv)
 	ping_send(pg, src_addr, dest_addr, src_mac, dest_mac, index);
 	ping_recv(pg);
 }
-
+*/
 void verify(char* buffer)
 {
 	struct icmp	*icmp;
@@ -235,7 +245,7 @@ void verify(char* buffer)
 	printf("ICMP: %d %d %d %d %d\n", icmp->icmp_type, icmp->icmp_code, icmp->icmp_id, icmp->icmp_seq, icmp->icmp_cksum);
 
 }
-
+/*
 void printHW(char* ptr)
 {
 	int i = 6;
@@ -243,4 +253,4 @@ void printHW(char* ptr)
 	{
 		printf("%.2x%s", *ptr++ & 0xff, (i == 1) ? " " : ":");
 	} while (--i > 0);
-}
+}*/

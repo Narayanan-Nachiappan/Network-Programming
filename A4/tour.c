@@ -138,7 +138,7 @@ int main(int argc, char **argv){
 
 			if(FD_ISSET(request, &reads)) //got a ping request, send ping reply //
 			{
-				ping_send2(request, pg);
+				//ping_send2(request, pg);
 			}
 			if(FD_ISSET(mtSockfd_recv, &reads)){
 				/* Receiving MC Packets */
@@ -267,15 +267,45 @@ int main(int argc, char **argv){
 							strcpy(sourceAddr, receivedTour->addrs[0].ipAddr);
 							close(mtSockfd_recv);
 							mtSockfd_recv = mtRecv(receivedTour->mtAddr.ipAddr, receivedTour->mtPort);
-					
+							
+							ping = 1; /* Start pinging the source */
 							rtFlag = 1;
 							err_msg("----------------------------------------");
+							
 							if(receivedTour->index+1 == receivedTour->numNodes){
 								err_msg("Reached the last node!");
 								struct sockaddr_in mc_addr; /* socket address structure */
 								unsigned int send_len;      /* length of string to send */
 								unsigned char mc_ttl=1;     /* time to live (hop count) */
   
+								int i;
+								for(i = 0; i < 5; i++){
+									struct hostent *hptr;
+									struct in_addr **pptr;
+									char ipAddr[16];
+									
+									hptr = gethostbyname(hostName);
+									pptr = (struct in_addr**) hptr->h_addr_list;
+									Inet_ntop(hptr->h_addrtype, *pptr, ipAddr, sizeof(ipAddr));
+
+									struct sockaddr * ipaddr;
+									ipaddr=(struct sockaddr *) malloc(sizeof(struct sockaddr));
+									ipaddr->sa_family=1;
+									strcpy(ipaddr->sa_data, sourceAddr); // Source node!!!
+									err_msg("%s",ipaddr->sa_data);
+									socklen_t len=sizeof(struct sockaddr);
+									struct hwaddr  *haddr=malloc(sizeof(struct hwaddr));
+									haddr->sll_ifindex=2;
+									haddr->sll_hatype=1;
+									haddr->sll_halen='6';
+									//int ret_val=areq(ipaddr,len,haddr);
+									//err_msg("retval %d" , ret_val);	
+									
+									ping_send(pg, ipAddr, sourceAddr, src_mac, haddr->sll_addr, haddr->sll_ifindex);
+									ping_recv(pg);
+									sleep(1);
+								};
+
 								/* construct a multicast address structure */
 								memset(&mc_addr, 0, sizeof(mc_addr));
 								mc_addr.sin_family      = AF_INET;
@@ -297,8 +327,6 @@ int main(int argc, char **argv){
 									exit(1);
 								}
 								memset(send_str, 0, sizeof(send_str));
-
-								ping = 1; /* Start pinging the source */
 
 							} else {
 								err_msg("Send RT packet from %s to %s"
@@ -375,8 +403,9 @@ int main(int argc, char **argv){
 				ping_recv(pg);
 			}
 
-			if(ping == 1){ //&& ( difftime(tick, time(NULL)) >= 1 )  ){
-
+			if(ping == 1 && ( difftime(tick, time(NULL)) >= 1 )  ){
+				err_msg("----------------------------------------");
+				err_msg("Send ping to the Source Node");
 				struct hostent *hptr;
 				struct in_addr **pptr;
 				char ipAddr[16];
@@ -395,12 +424,12 @@ int main(int argc, char **argv){
 				haddr->sll_ifindex=2;
 				haddr->sll_hatype=1;
 				haddr->sll_halen='6';
-				int ret_val=areq(ipaddr,len,haddr);
-				err_msg("retval %d" , ret_val);	
+				//int ret_val=areq(ipaddr,len,haddr);
+				//err_msg("retval %d" , ret_val);	
 
 				printHW(haddr->sll_addr);
 				
-				ping_send(request, ipAddr, sourceAddr, src_mac, haddr->sll_addr, haddr->sll_ifindex);
+				ping_send(pg, ipAddr, sourceAddr, src_mac, haddr->sll_addr, haddr->sll_ifindex);
 
 				tick = time(NULL);
 			}
