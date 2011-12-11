@@ -79,4 +79,27 @@ TOUR
 
        --When each nodes receives multicast message asking indentification, it sends multicast packet identifying
        itself.
- 
+ _________________________
+ ARP
+
+The ARP process keeps track of the hardware addresss of its interfaces and any nodes that contact it in the ARP table.
+We've implemented the ARP table as an array of arp_cache structures, as defined below. The ARP process is called by the API.
+After checking it's table for the entry, if it has the entry it responds. If not, it broadcasts a request to the other nodes.
+Nodes that have the entry will reply and the requesting node will update it's table and send a hwaddr structure to the local
+tour node via the API.
+
+struct arp_cache
+{
+		char	ip_addr[16];	/* IP address */
+		char    if_haddr[6];	/* hardware address */
+		int     if_index;		/* interface index */
+		unsigned short  sll_hatype; /*Hardware Type*/
+		int		sockfd; /*UNIX socket description */
+};
+____________________________________________
+PING
+
+The ping echo is constructed by filling in ethernet, IP, and ICMP headers and sending the packet to the proper destination.
+Using the IP_HDRINCL option tells the kernel not to add it's own IP header. The ECHO request is responded to automatically by
+the kernel on the receiving machine. On the first machine, we can parse out the values and make sure that the ping originated
+from us by checking the ID value.
